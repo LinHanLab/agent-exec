@@ -49,3 +49,12 @@ make quality
 **Why:** `compile` ensures the code builds successfully. `quality` runs tests, formatting, and linting to catch issues early.
 
 # Architecture Overview
+
+CLI tool wrapping the Claude CLI to run prompts with formatted output.
+
+## Files
+
+- `main.go` - CLI entry point, subcommand routing (one-shot, iterations)
+- `oneshot.go` - single prompt execution, claude CLI streaming JSON parsing
+- `iterations.go` - multi-prompt loop with sleep intervals, signal handling
+- `format.go` - text formatting utilities (truncation, wrapping, validation)

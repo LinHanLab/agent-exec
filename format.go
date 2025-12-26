@@ -66,7 +66,8 @@ func wrapText(text string, width int) string {
 		currentLine := ""
 
 		for _, word := range words {
-			if currentLine == "" {
+			switch {
+			case currentLine == "":
 				if len(word) > width {
 					// Word is longer than width, force break
 					for len(word) > width {
@@ -82,9 +83,9 @@ func wrapText(text string, width int) string {
 				} else {
 					currentLine = word
 				}
-			} else if len(currentLine)+1+len(word) <= width {
+			case len(currentLine)+1+len(word) <= width:
 				currentLine += " " + word
-			} else {
+			default:
 				result.WriteString(currentLine)
 				result.WriteString("\n")
 				if len(word) > width {
@@ -141,7 +142,7 @@ func validateIterationArgs(iterations int, sleepSeconds int, promptFiles []strin
 			return fmt.Errorf("prompt file not found: %s", promptFile)
 		}
 		if err != nil {
-			return fmt.Errorf("error accessing prompt file: %s: %v", promptFile, err)
+			return fmt.Errorf("error accessing prompt file: %s: %w", promptFile, err)
 		}
 		if info.Size() == 0 {
 			return fmt.Errorf("prompt file is empty: %s", promptFile)
@@ -149,7 +150,7 @@ func validateIterationArgs(iterations int, sleepSeconds int, promptFiles []strin
 
 		content, err := os.ReadFile(promptFile)
 		if err != nil {
-			return fmt.Errorf("error reading prompt file: %s: %v", promptFile, err)
+			return fmt.Errorf("error reading prompt file: %s: %w", promptFile, err)
 		}
 		if strings.TrimSpace(string(content)) == "" {
 			return fmt.Errorf("prompt file contains only whitespace: %s", promptFile)

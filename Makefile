@@ -1,7 +1,7 @@
 all: compile quality
 
 compile:
-	go build -o app ./cmd
+	go build -o app .
 
 quality:
 	go test ./...

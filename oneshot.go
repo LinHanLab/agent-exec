@@ -12,10 +12,10 @@ import (
 
 // ANSI color codes
 const (
-	Bold   = "\033[1m"
-	Reset  = "\033[0m"
-	Cyan   = "\033[36m"
-	Green  = "\033[32m"
+	Bold  = "\033[1m"
+	Reset = "\033[0m"
+	Cyan  = "\033[36m"
+	Green = "\033[32m"
 )
 
 // JSON structures for parsing claude CLI output
@@ -76,7 +76,7 @@ func runOneShot(prompt string) error {
 	}
 
 	if err := parseClaudeOutput(stdout); err != nil {
-		cmd.Wait()
+		_ = cmd.Wait()
 		return fmt.Errorf("failed to parse output: %w", err)
 	}
 
