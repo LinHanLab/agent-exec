@@ -1,7 +1,10 @@
 all: compile quality
 
 compile:
-	go build -o app ./cmd/agent-exec
+	go build -o app .
+
+install:
+	go install .
 
 quality:
 	go test ./...
