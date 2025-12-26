@@ -16,15 +16,14 @@ Avoid documenting what the code already expresses (dependencies, exports, types)
 ## Template
 
 ```markdown
-
 # folder-name/
 
 [1-2 line purpose]
 
 ## Files
 
-- `file.ts` - one-line description
-- `file.ts` - one-line description
+- `file.go` - one-line description
+- `file.go` - one-line description
 
 ## Conventions
 
@@ -50,11 +49,10 @@ make quality
 
 # Architecture Overview
 
-CLI tool wrapping the Claude CLI to run prompts with formatted output.
+CLI tool wrapping the Claude CLI to run prompts with formatted output. Provides one-shot prompt execution and iterative batch processing with configurable sleep intervals.
 
-## Files
+## Components
 
-- `main.go` - CLI entry point, subcommand routing (one-shot, iterations)
-- `oneshot.go` - single prompt execution, claude CLI streaming JSON parsing
-- `iterations.go` - multi-prompt loop with sleep intervals, signal handling
-- `format.go` - text formatting utilities (truncation, wrapping, validation)
+- **cmd/** - CLI entry point and command routing
+- **pkg/claude/** - Claude CLI integration, streaming JSON parsing, and prompt execution
+- **pkg/format/** - Text formatting utilities for display

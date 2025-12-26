@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+
+	"github.com/LinHanLab/agent-exec/pkg/claude"
 )
 
 func main() {
@@ -21,7 +23,7 @@ func main() {
 			fmt.Fprintln(os.Stderr, "Usage: agent-exec one-shot <prompt>")
 			os.Exit(1)
 		}
-		if err := runOneShot(os.Args[2]); err != nil {
+		if err := claude.RunPrompt(os.Args[2]); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
@@ -47,7 +49,7 @@ func main() {
 
 		promptFiles := os.Args[4:]
 
-		if err := runIterations(iterations, sleepSeconds, promptFiles); err != nil {
+		if err := claude.RunPromptLoop(iterations, sleepSeconds, promptFiles); err != nil {
 			if err.Error() == "interrupted" {
 				os.Exit(130)
 			}
