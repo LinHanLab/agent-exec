@@ -36,7 +36,8 @@ func RunPrompt(prompt string) error {
 		fmt.Println()
 	}
 
-	fmt.Println("🚀 Starting...")
+	cwd, _ := os.Getwd()
+	fmt.Printf("🚀 Starting(cwd: %s)\n", cwd)
 	fmt.Println()
 
 	cmd := exec.Command("claude", "--verbose", "--output-format", "stream-json", "-p", prompt)
