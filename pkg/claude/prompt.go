@@ -29,15 +29,17 @@ func getCwdInfo() (cwd, fileList string) {
 	}
 
 	files, err := os.ReadDir(cwd)
-	if err == nil && len(files) > 0 {
-		var names []string
-		for _, f := range files {
-			names = append(names, f.Name())
-		}
-		fileList = " [" + strings.Join(names, ", ") + "]"
-	} else if err != nil {
+	if err != nil {
 		fmt.Printf("⚠️ Warning: failed to read directory: %v\n", err)
+		fileList = "unknown"
 	}
+
+	var names []string
+	for _, f := range files {
+		names = append(names, f.Name())
+	}
+	fileList = " [" + strings.Join(names, ", ") + "]"
+
 	return
 }
 
