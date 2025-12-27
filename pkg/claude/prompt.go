@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -16,6 +17,29 @@ const (
 	PromptMaxLen   = 270
 	TruncateSuffix = "[...Truncated]"
 )
+
+// getCwdInfo retrieves current working directory and file list with error handling
+func getCwdInfo() (cwd, fileList string) {
+	var err error
+	cwd, err = os.Getwd()
+	if err != nil {
+		fmt.Printf("⚠️ Warning: failed to get working directory: %v\n", err)
+		cwd = "unknown"
+		return
+	}
+
+	files, err := os.ReadDir(cwd)
+	if err == nil && len(files) > 0 {
+		var names []string
+		for _, f := range files {
+			names = append(names, f.Name())
+		}
+		fileList = " [" + strings.Join(names, ", ") + "]"
+	} else if err != nil {
+		fmt.Printf("⚠️ Warning: failed to read directory: %v\n", err)
+	}
+	return
+}
 
 // RunPrompt executes a single prompt with claude CLI
 func RunPrompt(prompt string) error {
@@ -36,8 +60,8 @@ func RunPrompt(prompt string) error {
 		fmt.Println()
 	}
 
-	cwd, _ := os.Getwd()
-	fmt.Printf("🚀 Starting(cwd: %s)\n", cwd)
+	cwd, fileList := getCwdInfo()
+	fmt.Printf("🚀 Starting(cwd: %s%s)\n", cwd, fileList)
 	fmt.Println()
 
 	cmd := exec.Command("claude", "--verbose", "--output-format", "stream-json", "-p", prompt)
