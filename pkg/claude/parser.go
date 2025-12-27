@@ -10,6 +10,8 @@ import (
 	"github.com/LinHanLab/agent-exec/pkg/format"
 )
 
+const maxResultDisplay = 200
+
 // ParseStreamJSON parses streaming JSON output from claude CLI
 func ParseStreamJSON(reader io.Reader) error {
 	scanner := bufio.NewScanner(reader)
@@ -24,6 +26,7 @@ func ParseStreamJSON(reader io.Reader) error {
 
 		var msg ClaudeMessage
 		if err := json.Unmarshal([]byte(line), &msg); err != nil {
+			fmt.Printf("⚠️  JSON parse error: %v\n", err)
 			continue
 		}
 
@@ -43,23 +46,33 @@ func ParseStreamJSON(reader io.Reader) error {
 					}
 				}
 			}
-		case "tool_result":
-			var toolResult ToolResultMessage
-			if err := json.Unmarshal([]byte(line), &toolResult); err == nil && toolResult.Result != "" {
-				result := toolResult.Result
-				if len(result) > 200 {
-					result = result[:200] + "..."
+		case "user":
+			for _, content := range msg.Message.Content {
+				if content.Type == "tool_result" && content.Content != "" {
+					result := truncateResult(content.Content, maxResultDisplay)
+					fmt.Printf("✅ %sResult%s: %s\n", format.Green, format.Reset, result)
 				}
-				fmt.Printf("✅ %sResult%s: %s\n", format.Green, format.Reset, result)
 			}
 		case "result":
 			if msg.Result != "" {
 				fmt.Printf("✅ %s\n", msg.Result)
 			}
+			if msg.DurationMs > 0 {
+				durationSec := float64(msg.DurationMs) / 1000.0
+				fmt.Printf("⏱️  Duration: %.2fs\n", durationSec)
+			}
 		}
 	}
 
 	return scanner.Err()
+}
+
+// truncateResult truncates a result string to maxLen if needed
+func truncateResult(result string, maxLen int) string {
+	if len(result) > maxLen {
+		return result[:maxLen] + "..."
+	}
+	return result
 }
 
 // FormatToolInputs formats and prints tool inputs with proper alignment
