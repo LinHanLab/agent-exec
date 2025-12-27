@@ -1,8 +1,6 @@
 package claude
 
 import (
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -78,142 +76,71 @@ func TestValidatePrompt(t *testing.T) {
 }
 
 func TestValidateLoopArgs(t *testing.T) {
-	// Create temporary test files
-	tmpDir := t.TempDir()
-
-	validFile := filepath.Join(tmpDir, "valid.txt")
-	if err := os.WriteFile(validFile, []byte("test prompt content"), 0644); err != nil {
-		t.Fatal(err)
-	}
-
-	emptyFile := filepath.Join(tmpDir, "empty.txt")
-	if err := os.WriteFile(emptyFile, []byte(""), 0644); err != nil {
-		t.Fatal(err)
-	}
-
-	whitespaceFile := filepath.Join(tmpDir, "whitespace.txt")
-	if err := os.WriteFile(whitespaceFile, []byte("   \n\t   "), 0644); err != nil {
-		t.Fatal(err)
-	}
-
 	tests := []struct {
-		name           string
-		iterations     int
-		sleepSeconds   int
-		promptFiles    []string
-		wantErr        bool
-		expectedErr    string
-		expectedLength int
+		name        string
+		iterations  int
+		prompt      string
+		wantErr     bool
+		expectedErr string
 	}{
 		{
-			name:           "valid arguments",
-			iterations:     5,
-			sleepSeconds:   10,
-			promptFiles:    []string{validFile},
-			wantErr:        false,
-			expectedErr:    "",
-			expectedLength: 1,
+			name:        "valid arguments",
+			iterations:  5,
+			prompt:      "test prompt",
+			wantErr:     false,
+			expectedErr: "",
 		},
 		{
-			name:         "zero iterations",
-			iterations:   0,
-			sleepSeconds: 10,
-			promptFiles:  []string{validFile},
-			wantErr:      true,
-			expectedErr:  "iterations must be a positive number",
+			name:        "zero iterations",
+			iterations:  0,
+			prompt:      "test prompt",
+			wantErr:     true,
+			expectedErr: "iterations must be a positive number",
 		},
 		{
-			name:         "negative iterations",
-			iterations:   -1,
-			sleepSeconds: 10,
-			promptFiles:  []string{validFile},
-			wantErr:      true,
-			expectedErr:  "iterations must be a positive number",
+			name:        "negative iterations",
+			iterations:  -1,
+			prompt:      "test prompt",
+			wantErr:     true,
+			expectedErr: "iterations must be a positive number",
 		},
 		{
-			name:         "negative sleep seconds",
-			iterations:   5,
-			sleepSeconds: -1,
-			promptFiles:  []string{validFile},
-			wantErr:      true,
-			expectedErr:  "sleep seconds must be a non-negative number",
+			name:        "single iteration",
+			iterations:  1,
+			prompt:      "test prompt",
+			wantErr:     false,
+			expectedErr: "",
 		},
 		{
-			name:         "zero sleep seconds",
-			iterations:   5,
-			sleepSeconds: 0,
-			promptFiles:  []string{validFile},
-			wantErr:      false,
-			expectedErr:  "",
+			name:        "empty prompt",
+			iterations:  5,
+			prompt:      "",
+			wantErr:     true,
+			expectedErr: "prompt cannot be empty",
 		},
 		{
-			name:         "no prompt files",
-			iterations:   5,
-			sleepSeconds: 10,
-			promptFiles:  []string{},
-			wantErr:      true,
-			expectedErr:  "at least one prompt file is required",
-		},
-		{
-			name:         "non-existent prompt file",
-			iterations:   5,
-			sleepSeconds: 10,
-			promptFiles:  []string{filepath.Join(tmpDir, "nonexistent.txt")},
-			wantErr:      true,
-			expectedErr:  "prompt file not found:",
-		},
-		{
-			name:         "empty prompt file",
-			iterations:   5,
-			sleepSeconds: 10,
-			promptFiles:  []string{emptyFile},
-			wantErr:      true,
-			expectedErr:  "prompt file is empty:",
-		},
-		{
-			name:         "whitespace-only prompt file",
-			iterations:   5,
-			sleepSeconds: 10,
-			promptFiles:  []string{whitespaceFile},
-			wantErr:      true,
-			expectedErr:  "prompt file contains only whitespace:",
-		},
-		{
-			name:           "multiple valid prompt files",
-			iterations:     5,
-			sleepSeconds:   10,
-			promptFiles:    []string{validFile, validFile},
-			wantErr:        false,
-			expectedErr:    "",
-			expectedLength: 2,
-		},
-		{
-			name:         "mix of valid and invalid files",
-			iterations:   5,
-			sleepSeconds: 10,
-			promptFiles:  []string{validFile, emptyFile},
-			wantErr:      true,
-			expectedErr:  "prompt file is empty:",
+			name:        "whitespace-only prompt",
+			iterations:  5,
+			prompt:      "   ",
+			wantErr:     true,
+			expectedErr: "prompt cannot be whitespace-only",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := ValidateLoopArgs(tt.iterations, tt.sleepSeconds, tt.promptFiles)
+			err := ValidateLoopArgs(tt.iterations, tt.prompt)
 
 			if tt.wantErr {
 				if err == nil {
-					t.Errorf("ValidateLoopArgs(%d, %d, %v) = nil; want error", tt.iterations, tt.sleepSeconds, tt.promptFiles)
+					t.Errorf("ValidateLoopArgs(%d, %q) = nil; want error", tt.iterations, tt.prompt)
 					return
 				}
 				if !strings.Contains(err.Error(), tt.expectedErr) {
-					t.Errorf("ValidateLoopArgs(%d, %d, %v) error = %q; want to contain %q", tt.iterations, tt.sleepSeconds, tt.promptFiles, err.Error(), tt.expectedErr)
+					t.Errorf("ValidateLoopArgs(%d, %q) error = %q; want to contain %q", tt.iterations, tt.prompt, err.Error(), tt.expectedErr)
 				}
 			} else if err != nil {
-				t.Errorf("ValidateLoopArgs(%d, %d, %v) = %v; want nil", tt.iterations, tt.sleepSeconds, tt.promptFiles, err)
-			}
-			if tt.expectedLength > 0 && len(result) != tt.expectedLength {
-				t.Errorf("ValidateLoopArgs(%d, %d, %v) returned %d items; want %d", tt.iterations, tt.sleepSeconds, tt.promptFiles, len(result), tt.expectedLength)
+				t.Errorf("ValidateLoopArgs(%d, %q) = %v; want nil", tt.iterations, tt.prompt, err)
 			}
 		})
 	}

@@ -7,47 +7,43 @@ A CLI tool to run Claude Code headlessly with human-readable formatted output. S
 ## Installation
 
 ```bash
-go install github.com/LinHanLab/agent-exec@latest
+go install github.com/LinHanLab/agent-exec/cmd/agent-exec@latest
 ```
 
-## Commands
-
-### one-shot
-
-Execute a single prompt and display the formatted result.
+## Usage
 
 ```bash
-agent-exec one-shot <prompt>
+agent-exec run <prompt>
+agent-exec run <prompt> -n <iterations>
+agent-exec run <prompt> -n <iterations> -s <sleep>
 ```
 
-**Example:**
+| Flag | Description |
+|------|-------------|
+| positional | Prompt string (quoted) |
+| `-n, --iterations` | Run count (default: 1) |
+| `-s, --sleep` | Sleep duration between iterations (default: 0, format: 2h30m, 30s, etc.) |
+
+### Examples
+
+Run a single prompt:
 ```bash
-agent-exec one-shot "explain how goroutines work"
+agent-exec run "explain how goroutines work"
 ```
 
-### iterations
-
-Run prompts from files repeatedly with sleep intervals between iterations. Useful for batch processing or monitoring tasks.
-
+Run 5 iterations:
 ```bash
-agent-exec iterations <count> <sleep_seconds> <file1> [file2...]
+agent-exec run "review the code" -n 5
 ```
 
-| Argument | Description |
-|----------|-------------|
-| `count` | Number of iterations to run |
-| `sleep_seconds` | Delay between iterations |
-| `file1...` | One or more files containing prompts |
-
-**Example:**
+Run 3 iterations with 2 minute sleep between each:
 ```bash
-agent-exec iterations 5 30 prompts/review.md prompts/summarize.md
+agent-exec run "analyze logs" -n 3 -s 2m
 ```
-
-This runs both prompt files 5 times, waiting 30 seconds between each iteration.
 
 ## Help
 
 ```bash
 agent-exec --help
+agent-exec run --help
 ```

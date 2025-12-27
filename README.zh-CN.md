@@ -7,47 +7,43 @@
 ## 安装
 
 ```bash
-go install github.com/LinHanLab/agent-exec@latest
+go install github.com/LinHanLab/agent-exec/cmd/agent-exec@latest
 ```
 
-## 命令
-
-### one-shot
-
-执行单个提示词并显示格式化结果。
+## 使用方法
 
 ```bash
-agent-exec one-shot <prompt>
-```
-
-**示例：**
-```bash
-agent-exec one-shot "解释 goroutine 的工作原理"
-```
-
-### iterations
-
-从文件中读取提示词并重复执行，每次迭代之间有休眠间隔。适用于批处理或监控任务。
-
-```bash
-agent-exec iterations <count> <sleep_seconds> <file1> [file2...]
+agent-exec run <prompt>
+agent-exec run <prompt> -n <iterations>
+agent-exec run <prompt> -n <iterations> -s <sleep>
 ```
 
 | 参数 | 说明 |
 |------|------|
-| `count` | 迭代次数 |
-| `sleep_seconds` | 迭代间隔（秒） |
-| `file1...` | 一个或多个包含提示词的文件 |
+| 位置参数 | 提示词字符串（需引号包裹） |
+| `-n, --iterations` | 运行次数（默认：1） |
+| `-s, --sleep` | 迭代间隔时长（默认：0，格式：2h30m、30s 等） |
 
-**示例：**
+### 示例
+
+执行单个提示词：
 ```bash
-agent-exec iterations 5 30 prompts/review.md prompts/summarize.md
+agent-exec run "解释 goroutine 的工作原理"
 ```
 
-以上命令会执行两个提示词文件 5 次，每次迭代间隔 30 秒。
+运行 5 次迭代：
+```bash
+agent-exec run "审查代码" -n 5
+```
+
+运行 3 次迭代，每次间隔 2 分钟：
+```bash
+agent-exec run "分析日志" -n 3 -s 2m
+```
 
 ## 帮助
 
 ```bash
 agent-exec --help
+agent-exec run --help
 ```

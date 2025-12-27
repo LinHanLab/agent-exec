@@ -56,3 +56,7 @@ CLI tool wrapping the Claude CLI to run prompts with formatted output. Provides 
 - **cmd/** - CLI entry point and command routing
 - **pkg/claude/** - Claude CLI integration, streaming JSON parsing, and prompt execution
 - **pkg/format/** - Text formatting utilities for display
+
+---
+
+Update this when: files are added, removed, or change purpose.

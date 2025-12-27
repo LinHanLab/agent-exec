@@ -8,6 +8,7 @@ Core Claude CLI integration, prompt execution, and streaming JSON parsing.
 - `prompt.go` - Prompt execution (one-shot and iteration loop), signal handling
 - `parser.go` - Streaming JSON parser, formats tool usage and results for display
 - `validate.go` - Prompt and iteration argument validation
+- `validate_test.go` - Tests for validation logic
 
 ## Conventions
 

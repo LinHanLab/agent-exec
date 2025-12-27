@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
@@ -64,10 +63,9 @@ func RunPrompt(prompt string) error {
 	return nil
 }
 
-// RunPromptLoop executes multiple prompts in iterations with configurable sleep
-func RunPromptLoop(iterations int, sleepSeconds int, promptFiles []string) error {
-	promptContents, err := ValidateLoopArgs(iterations, sleepSeconds, promptFiles)
-	if err != nil {
+// RunPromptLoop executes a prompt in iterations with configurable sleep
+func RunPromptLoop(iterations int, sleep time.Duration, prompt string) error {
+	if err := ValidateLoopArgs(iterations, prompt); err != nil {
 		return fmt.Errorf("validation error: %w", err)
 	}
 
@@ -92,37 +90,21 @@ func RunPromptLoop(iterations int, sleepSeconds int, promptFiles []string) error
 		fmt.Printf("Starting iteration %d of %d\n", i, iterations)
 		fmt.Println("=========================================")
 
-		// Execute prompts with fail-fast within iteration
-		iterationFailed := false
-		for _, prompt := range promptContents {
-			// Check for interrupt before each prompt
-			select {
-			case <-sigChan:
-				fmt.Println("\n\n⚠️  Stopping all iterations...")
-				return fmt.Errorf("interrupted")
-			default:
-			}
-
-			if err := RunPrompt(prompt); err != nil {
-				fmt.Printf("❌ Prompt failed: %v\n", err)
-				iterationFailed = true
-				break
-			}
-		}
-
-		if iterationFailed {
-			fmt.Printf("❌ Iteration %d failed (one or more prompts failed)\n", i)
+		// Execute prompt
+		if err := RunPrompt(prompt); err != nil {
+			fmt.Printf("❌ Prompt failed: %v\n", err)
+			fmt.Printf("❌ Iteration %d failed\n", i)
 			failedIterations++
 		} else {
 			fmt.Printf("✅ Iteration %d completed successfully\n", i)
 		}
 
 		// Sleep between iterations (skip sleep after last iteration)
-		if i < iterations && sleepSeconds > 0 {
-			fmt.Printf("💤 Sleeping for %d seconds...\n", sleepSeconds)
+		if i < iterations && sleep > 0 {
+			fmt.Printf("💤 Sleeping for %s...\n", sleep)
 
 			// Interruptible sleep
-			timer := time.NewTimer(time.Duration(sleepSeconds) * time.Second)
+			timer := time.NewTimer(sleep)
 			select {
 			case <-sigChan:
 				timer.Stop()
@@ -143,19 +125,4 @@ func RunPromptLoop(iterations int, sleepSeconds int, promptFiles []string) error
 	}
 
 	return nil
-}
-
-// ReadPromptFile reads and returns the contents of a prompt file
-func ReadPromptFile(path string) (string, error) {
-	content, err := os.ReadFile(path)
-	if err != nil {
-		return "", fmt.Errorf("failed to read file: %w", err)
-	}
-
-	prompt := string(content)
-	if strings.TrimSpace(prompt) == "" {
-		return "", fmt.Errorf("prompt file is empty or whitespace-only")
-	}
-
-	return prompt, nil
 }

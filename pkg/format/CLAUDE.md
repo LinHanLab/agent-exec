@@ -6,6 +6,7 @@ Text formatting utilities for display and output formatting.
 
 - `text.go` - Text wrapping and truncation utilities
 - `color.go` - ANSI color codes for terminal output
+- `text_test.go` - Tests for text formatting utilities
 
 ## Conventions
 
