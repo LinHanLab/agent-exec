@@ -19,5 +19,5 @@ type ContentItem struct {
 	Text    string                 `json:"text,omitempty"`
 	Name    string                 `json:"name,omitempty"`
 	Input   map[string]interface{} `json:"input,omitempty"`
-	Content string                 `json:"content,omitempty"` // tool_result output
+	Content interface{}            `json:"content,omitempty"` // can be string or array
 }

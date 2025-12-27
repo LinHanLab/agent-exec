@@ -26,7 +26,7 @@ func ParseStreamJSON(reader io.Reader) error {
 
 		var msg ClaudeMessage
 		if err := json.Unmarshal([]byte(line), &msg); err != nil {
-			fmt.Printf("⚠️  JSON parse error: %v\n", err)
+			fmt.Printf("⚠️ JSON parse error: %v\n", err)
 			continue
 		}
 
@@ -48,9 +48,12 @@ func ParseStreamJSON(reader io.Reader) error {
 			}
 		case "user":
 			for _, content := range msg.Message.Content {
-				if content.Type == "tool_result" && content.Content != "" {
-					result := truncateResult(content.Content, maxResultDisplay)
-					fmt.Printf("✅ %sResult%s: %s\n", format.Green, format.Reset, result)
+				if content.Type == "tool_result" && content.Content != nil {
+					resultText := contentToString(content.Content)
+					if resultText != "" {
+						result := truncateResult(resultText, maxResultDisplay)
+						fmt.Printf("✅ %sResult%s: %s\n", format.Green, format.Reset, result)
+					}
 				}
 			}
 		case "result":
@@ -59,7 +62,7 @@ func ParseStreamJSON(reader io.Reader) error {
 			}
 			if msg.DurationMs > 0 {
 				durationSec := float64(msg.DurationMs) / 1000.0
-				fmt.Printf("⏱️  Duration: %.2fs\n", durationSec)
+				fmt.Printf("⏱️ Duration: %.2fs\n", durationSec)
 			}
 		}
 	}
@@ -91,4 +94,19 @@ func FormatToolInputs(inputs map[string]interface{}) {
 		}
 		fmt.Printf("     %s%s%s: %s\n", format.Cyan, key, format.Reset, valueStr)
 	}
+}
+
+// contentToString converts content (string or array) to string
+func contentToString(content interface{}) string {
+	if str, ok := content.(string); ok {
+		return str
+	}
+	if arr, ok := content.([]interface{}); ok {
+		var result string
+		for _, item := range arr {
+			result += fmt.Sprintf("%v", item)
+		}
+		return result
+	}
+	return ""
 }
