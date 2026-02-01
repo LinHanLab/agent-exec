@@ -10,8 +10,10 @@ import (
 )
 
 var (
-	iterations int
-	sleep      time.Duration
+	iterations         int
+	sleep              time.Duration
+	systemPrompt       string
+	appendSystemPrompt string
 )
 
 var runCmd = &cobra.Command{
@@ -27,11 +29,16 @@ Examples:
 	Run: func(cmd *cobra.Command, args []string) {
 		prompt := args[0]
 
+		opts := &claude.PromptOptions{
+			SystemPrompt:       systemPrompt,
+			AppendSystemPrompt: appendSystemPrompt,
+		}
+
 		var err error
 		if iterations == 1 {
-			_, err = claude.RunPrompt(prompt)
+			_, err = claude.RunPrompt(prompt, opts)
 		} else {
-			err = claude.RunPromptLoop(iterations, sleep, prompt)
+			err = claude.RunPromptLoop(iterations, sleep, prompt, opts)
 		}
 
 		if err != nil {
@@ -49,4 +56,6 @@ func init() {
 
 	runCmd.Flags().IntVarP(&iterations, "iterations", "n", 1, "number of iterations to run")
 	runCmd.Flags().DurationVarP(&sleep, "sleep", "s", 0, "sleep duration between iterations (e.g., 2h30m, 10s)")
+	runCmd.Flags().StringVar(&systemPrompt, "system-prompt", "", "replace entire system prompt (empty = use Claude Code defaults)")
+	runCmd.Flags().StringVar(&appendSystemPrompt, "append-system-prompt", "", "append to default system prompt (empty = use Claude Code defaults)")
 }

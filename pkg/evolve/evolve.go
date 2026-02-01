@@ -6,6 +6,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/LinHanLab/agent-exec/pkg/claude"
 	"github.com/LinHanLab/agent-exec/pkg/git"
@@ -13,10 +14,21 @@ import (
 
 // EvolveConfig holds configuration for the evolution process
 type EvolveConfig struct {
-	Plan          string // Initial implementation prompt
-	ImprovePrompt string // Prompt for improvement agent
-	ComparePrompt string // Prompt for comparison agent
-	Iterations    int    // Number of evolution iterations
+	Plan          string        // Initial implementation prompt
+	ImprovePrompt string        // Prompt for improvement agent
+	ComparePrompt string        // Prompt for comparison agent
+	Iterations    int           // Number of evolution iterations
+	Sleep         time.Duration // Sleep duration between evolution rounds
+
+	// System prompts for each agent
+	PlanSystemPrompt       string
+	PlanAppendSystemPrompt string
+
+	ImproveSystemPrompt       string
+	ImproveAppendSystemPrompt string
+
+	CompareSystemPrompt       string
+	CompareAppendSystemPrompt string
 }
 
 // Evolve runs the evolutionary code improvement loop
@@ -58,7 +70,11 @@ func Evolve(cfg EvolveConfig) (string, error) {
 	fmt.Println("🤖 Agent A: Implementing plan...")
 	fmt.Println()
 
-	if _, err := claude.RunPrompt(cfg.Plan); err != nil {
+	planOpts := &claude.PromptOptions{
+		SystemPrompt:       cfg.PlanSystemPrompt,
+		AppendSystemPrompt: cfg.PlanAppendSystemPrompt,
+	}
+	if _, err := claude.RunPrompt(cfg.Plan, planOpts); err != nil {
 		return "", fmt.Errorf("agent A failed: %w", err)
 	}
 
@@ -98,7 +114,11 @@ func Evolve(cfg EvolveConfig) (string, error) {
 		fmt.Println("🤖 Agent B: Improving code...")
 		fmt.Println()
 
-		if _, err := claude.RunPrompt(cfg.ImprovePrompt); err != nil {
+		improveOpts := &claude.PromptOptions{
+			SystemPrompt:       cfg.ImproveSystemPrompt,
+			AppendSystemPrompt: cfg.ImproveAppendSystemPrompt,
+		}
+		if _, err := claude.RunPrompt(cfg.ImprovePrompt, improveOpts); err != nil {
 			return winner, fmt.Errorf("agent B failed: %w", err)
 		}
 
@@ -124,7 +144,11 @@ func Evolve(cfg EvolveConfig) (string, error) {
 			return winner, fmt.Errorf("failed to checkout base for comparison: %w", err)
 		}
 
-		result, err := claude.RunPrompt(comparePrompt)
+		compareOpts := &claude.PromptOptions{
+			SystemPrompt:       cfg.CompareSystemPrompt,
+			AppendSystemPrompt: cfg.CompareAppendSystemPrompt,
+		}
+		result, err := claude.RunPrompt(comparePrompt, compareOpts)
 		if err != nil {
 			return winner, fmt.Errorf("agent C failed: %w", err)
 		}
@@ -146,6 +170,20 @@ func Evolve(cfg EvolveConfig) (string, error) {
 		fmt.Printf("\n🗑️  Deleting loser branch: %s\n", loser)
 		if err := git.DeleteBranch(loser); err != nil {
 			return winner, fmt.Errorf("failed to delete loser: %w", err)
+		}
+
+		// Sleep between evolution rounds (skip after last iteration)
+		if i < cfg.Iterations && cfg.Sleep > 0 {
+			fmt.Printf("💤 Sleeping for %s before next evolution round...\n", cfg.Sleep)
+
+			timer := time.NewTimer(cfg.Sleep)
+			select {
+			case <-sigChan:
+				timer.Stop()
+				fmt.Println("\n\n⚠️  Interrupted. Current winner:", winner)
+				return winner, fmt.Errorf("interrupted")
+			case <-timer.C:
+			}
 		}
 	}
 

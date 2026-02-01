@@ -18,6 +18,26 @@ const (
 	TruncateSuffix = "[...Truncated]"
 )
 
+// PromptOptions holds optional configuration for running prompts
+type PromptOptions struct {
+	SystemPrompt       string // Replace entire system prompt (empty = use defaults)
+	AppendSystemPrompt string // Append to default system prompt (empty = use defaults)
+}
+
+// BuildClaudeArgs constructs the claude CLI arguments based on options
+func (opts *PromptOptions) BuildClaudeArgs(prompt string) []string {
+	args := []string{"--verbose", "--output-format", "stream-json", "-p", prompt}
+
+	if opts.SystemPrompt != "" {
+		args = append(args, "--system-prompt", opts.SystemPrompt)
+	}
+	if opts.AppendSystemPrompt != "" {
+		args = append(args, "--append-system-prompt", opts.AppendSystemPrompt)
+	}
+
+	return args
+}
+
 // getCwdInfo retrieves current working directory and file list with error handling
 func getCwdInfo() (cwd, fileList string) {
 	var err error
@@ -44,7 +64,7 @@ func getCwdInfo() (cwd, fileList string) {
 }
 
 // RunPrompt executes a single prompt with claude CLI and returns the final result text
-func RunPrompt(prompt string) (string, error) {
+func RunPrompt(prompt string, opts *PromptOptions) (string, error) {
 	if err := ValidatePrompt(prompt); err != nil {
 		return "", fmt.Errorf("validation error: %w", err)
 	}
@@ -66,7 +86,11 @@ func RunPrompt(prompt string) (string, error) {
 	fmt.Printf("🚀 Starting(cwd: %s%s)\n", cwd, fileList)
 	fmt.Println()
 
-	cmd := exec.Command("claude", "--verbose", "--output-format", "stream-json", "-p", prompt)
+	if opts == nil {
+		opts = &PromptOptions{}
+	}
+	args := opts.BuildClaudeArgs(prompt)
+	cmd := exec.Command("claude", args...)
 	cmd.Stderr = os.Stderr
 
 	stdout, err := cmd.StdoutPipe()
@@ -92,12 +116,16 @@ func RunPrompt(prompt string) (string, error) {
 }
 
 // RunPromptLoop executes a prompt in iterations with configurable sleep
-func RunPromptLoop(iterations int, sleep time.Duration, prompt string) error {
+func RunPromptLoop(iterations int, sleep time.Duration, prompt string, opts *PromptOptions) error {
 	if err := ValidateLoopArgs(iterations, prompt); err != nil {
 		return fmt.Errorf("validation error: %w", err)
 	}
 
 	failedIterations := 0
+
+	if opts == nil {
+		opts = &PromptOptions{}
+	}
 
 	// Set up signal handler for graceful shutdown
 	sigChan := make(chan os.Signal, 1)
@@ -119,7 +147,7 @@ func RunPromptLoop(iterations int, sleep time.Duration, prompt string) error {
 		fmt.Println("=========================================")
 
 		// Execute prompt
-		if _, err := RunPrompt(prompt); err != nil {
+		if _, err := RunPrompt(prompt, opts); err != nil {
 			fmt.Printf("❌ Prompt failed: %v\n", err)
 			fmt.Printf("❌ Iteration %d failed\n", i)
 			failedIterations++
