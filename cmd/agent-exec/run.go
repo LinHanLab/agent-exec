@@ -29,7 +29,7 @@ Examples:
 
 		var err error
 		if iterations == 1 {
-			err = claude.RunPrompt(prompt)
+			_, err = claude.RunPrompt(prompt)
 		} else {
 			err = claude.RunPromptLoop(iterations, sleep, prompt)
 		}

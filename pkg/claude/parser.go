@@ -12,11 +12,13 @@ import (
 
 const maxResultDisplay = 200
 
-// ParseStreamJSON parses streaming JSON output from claude CLI
-func ParseStreamJSON(reader io.Reader) error {
+// ParseStreamJSON parses streaming JSON output from claude CLI and returns the final result text
+func ParseStreamJSON(reader io.Reader) (string, error) {
 	scanner := bufio.NewScanner(reader)
 	buf := make([]byte, 0, 1024*1024)
 	scanner.Buffer(buf, 10*1024*1024)
+
+	var resultText string
 
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -49,15 +51,16 @@ func ParseStreamJSON(reader io.Reader) error {
 		case "user":
 			for _, content := range msg.Message.Content {
 				if content.Type == "tool_result" && content.Content != nil {
-					resultText := contentToString(content.Content)
-					if resultText != "" {
-						result := truncateResult(resultText, maxResultDisplay)
+					resultStr := contentToString(content.Content)
+					if resultStr != "" {
+						result := truncateResult(resultStr, maxResultDisplay)
 						fmt.Printf("✅ %sResult%s: %s\n", format.Green, format.Reset, result)
 					}
 				}
 			}
 		case "result":
 			if msg.Result != "" {
+				resultText = msg.Result
 				fmt.Printf("✅ %s\n", msg.Result)
 			}
 			if msg.DurationMs > 0 {
@@ -67,7 +70,7 @@ func ParseStreamJSON(reader io.Reader) error {
 		}
 	}
 
-	return scanner.Err()
+	return resultText, scanner.Err()
 }
 
 // truncateResult truncates a result string to maxLen if needed

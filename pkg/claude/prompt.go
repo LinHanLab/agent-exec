@@ -31,7 +31,7 @@ func getCwdInfo() (cwd, fileList string) {
 	files, err := os.ReadDir(cwd)
 	if err != nil {
 		fmt.Printf("⚠️ Warning: failed to read directory: %v\n", err)
-		fileList = "unknown"
+		return
 	}
 
 	var names []string
@@ -43,10 +43,10 @@ func getCwdInfo() (cwd, fileList string) {
 	return
 }
 
-// RunPrompt executes a single prompt with claude CLI
-func RunPrompt(prompt string) error {
+// RunPrompt executes a single prompt with claude CLI and returns the final result text
+func RunPrompt(prompt string) (string, error) {
 	if err := ValidatePrompt(prompt); err != nil {
-		return fmt.Errorf("validation error: %w", err)
+		return "", fmt.Errorf("validation error: %w", err)
 	}
 
 	fmt.Println("▐ 🪄PROMPT")
@@ -71,23 +71,24 @@ func RunPrompt(prompt string) error {
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return fmt.Errorf("failed to create stdout pipe: %w", err)
+		return "", fmt.Errorf("failed to create stdout pipe: %w", err)
 	}
 
 	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("failed to start claude CLI: %w", err)
+		return "", fmt.Errorf("failed to start claude CLI: %w", err)
 	}
 
-	if err := ParseStreamJSON(stdout); err != nil {
+	result, parseErr := ParseStreamJSON(stdout)
+	if parseErr != nil {
 		_ = cmd.Wait()
-		return fmt.Errorf("failed to parse output: %w", err)
+		return "", fmt.Errorf("failed to parse output: %w", parseErr)
 	}
 
 	if err := cmd.Wait(); err != nil {
-		return fmt.Errorf("claude CLI failed: %w", err)
+		return "", fmt.Errorf("claude CLI failed: %w", err)
 	}
 
-	return nil
+	return result, nil
 }
 
 // RunPromptLoop executes a prompt in iterations with configurable sleep
@@ -118,7 +119,7 @@ func RunPromptLoop(iterations int, sleep time.Duration, prompt string) error {
 		fmt.Println("=========================================")
 
 		// Execute prompt
-		if err := RunPrompt(prompt); err != nil {
+		if _, err := RunPrompt(prompt); err != nil {
 			fmt.Printf("❌ Prompt failed: %v\n", err)
 			fmt.Printf("❌ Iteration %d failed\n", i)
 			failedIterations++
