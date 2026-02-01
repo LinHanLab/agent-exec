@@ -46,8 +46,8 @@ func Evolve(cfg EvolveConfig) (string, error) {
 
 	fmt.Println("=========================================")
 	fmt.Println("🧬 Starting Evolution")
-	fmt.Printf("   Iterations: %d\n", cfg.Iterations)
-	fmt.Printf("   Base branch: %s\n", originalBranch)
+	fmt.Printf("Iterations: %d\n", cfg.Iterations)
+	fmt.Printf("Base branch: %s\n", originalBranch)
 	fmt.Println("=========================================")
 	fmt.Println()
 
@@ -91,7 +91,7 @@ func Evolve(cfg EvolveConfig) (string, error) {
 		// Check for interrupt
 		select {
 		case <-sigChan:
-			fmt.Println("\n\n⚠️  Interrupted. Current winner:", winner)
+			fmt.Println("\n\n⚠️ Interrupted. Current winner:", winner)
 			return winner, fmt.Errorf("interrupted")
 		default:
 		}
@@ -131,8 +131,8 @@ func Evolve(cfg EvolveConfig) (string, error) {
 		// Compare branches
 		fmt.Println()
 		fmt.Println("⚖️ Comparing implementations...")
-		fmt.Printf("   Branch 1: %s\n", winner)
-		fmt.Printf("   Branch 2: %s\n", branchB)
+		fmt.Printf("Branch 1: %s\n", winner)
+		fmt.Printf("Branch 2: %s\n", branchB)
 		fmt.Println()
 
 		// Build comparison prompt with branch names
@@ -167,7 +167,7 @@ func Evolve(cfg EvolveConfig) (string, error) {
 			return winner, fmt.Errorf("failed to checkout winner: %w", err)
 		}
 
-		fmt.Printf("\n🗑️  Deleting loser branch: %s\n", loser)
+		fmt.Printf("🗑️ Deleting loser branch: %s\n", loser)
 		if err := git.DeleteBranch(loser); err != nil {
 			return winner, fmt.Errorf("failed to delete loser: %w", err)
 		}
@@ -180,7 +180,7 @@ func Evolve(cfg EvolveConfig) (string, error) {
 			select {
 			case <-sigChan:
 				timer.Stop()
-				fmt.Println("\n\n⚠️  Interrupted. Current winner:", winner)
+				fmt.Println("\n\n⚠️ Interrupted. Current winner:", winner)
 				return winner, fmt.Errorf("interrupted")
 			case <-timer.C:
 			}
@@ -221,6 +221,7 @@ func parseBranchFromResponse(response, branch1, branch2 string) string {
 		return branch2
 	}
 
+	// todo: should just error
 	// Default to branch2 (the newer one) if parsing fails
 	fmt.Printf("⚠️  Could not parse loser from response, defaulting to: %s\n", branch2)
 	return branch2
