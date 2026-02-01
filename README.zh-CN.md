@@ -28,14 +28,6 @@ agent-exec run <prompt> -n <iterations> -s <sleep>
 | `-n, --iterations` | 运行次数（默认：1） |
 | `-s, --sleep` | 迭代间隔时长（默认：0，格式：2h30m、30s 等） |
 
-**示例：**
-
-```bash
-agent-exec run "解释 goroutine 的工作原理"
-agent-exec run "审查代码" -n 5
-agent-exec run "分析日志" -n 3 -s 2m
-```
-
 ### Evolve 命令
 
 通过竞争分支的锦标赛式迭代改进来演化代码。
@@ -52,13 +44,31 @@ agent-exec evolve <plan> -i <improve-prompt> -c <compare-prompt> -n <iterations>
 | `-c, --compare` | 比较提示词（默认："compare these two implementations and determine which is worse"） |
 | `-n, --iterations` | 演化迭代次数（默认：3） |
 
-**示例：**
+**工作原理：**
 
-```bash
-agent-exec evolve "实现用户 REST API"
-agent-exec evolve "构建 CLI 工具" -n 5
-agent-exec evolve "创建解析器" -i "优化性能" -c "哪个更快？"
 ```
+基础分支
+    │
+    ├─> [impl-a3f9c2] ← Agent A: 初始实现
+    │        │
+    │        └─> 胜者（第 0 轮）
+    │
+    ├─> 第 1 轮：锦标赛
+    │   ├─> [impl-a3f9c2]（当前胜者）
+    │   ├─> [impl-7b2e1f] ← Agent B: 改进代码
+    │   ├─> Agent C: 比较两者 → 败者：impl-a3f9c2
+    │   └─> 胜者：[impl-7b2e1f] ✓
+    │
+    ├─> 第 2 轮：锦标赛
+    │   ├─> [impl-7b2e1f]（当前胜者）
+    │   ├─> [impl-9d4c8a] ← Agent B: 改进代码
+    │   ├─> Agent C: 比较两者 → 败者：impl-9d4c8a
+    │   └─> 胜者：[impl-7b2e1f] ✓
+    │
+    └─> 最终：胜出分支上的最佳实现
+```
+
+每次迭代创建一个竞争分支，改进代码，然后通过 AI 比较淘汰较差的实现。幸存者成为下一轮的冠军。
 
 ## 帮助
 

@@ -28,14 +28,6 @@ agent-exec run <prompt> -n <iterations> -s <sleep>
 | `-n, --iterations` | Run count (default: 1) |
 | `-s, --sleep` | Sleep duration between iterations (default: 0, format: 2h30m, 30s, etc.) |
 
-**Examples:**
-
-```bash
-agent-exec run "explain how goroutines work"
-agent-exec run "review the code" -n 5
-agent-exec run "analyze logs" -n 3 -s 2m
-```
-
 ### Evolve Command
 
 Evolve code through tournament-style iterative improvement with competing branches.
@@ -52,13 +44,31 @@ agent-exec evolve <plan> -i <improve-prompt> -c <compare-prompt> -n <iterations>
 | `-c, --compare` | Comparison prompt (default: "compare these two implementations and determine which is worse") |
 | `-n, --iterations` | Evolution iterations (default: 3) |
 
-**Examples:**
+**How it works:**
 
-```bash
-agent-exec evolve "implement a REST API for users"
-agent-exec evolve "build a CLI tool" -n 5
-agent-exec evolve "create a parser" -i "optimize performance" -c "which is faster?"
 ```
+Base Branch
+    │
+    ├─> [impl-a3f9c2] ← Agent A: Initial implementation
+    │        │
+    │        └─> Winner (Round 0)
+    │
+    ├─> Round 1: Tournament
+    │   ├─> [impl-a3f9c2] (current winner)
+    │   ├─> [impl-7b2e1f] ← Agent B: Improve code
+    │   ├─> Agent C: Compare both → Loser: impl-a3f9c2
+    │   └─> Winner: [impl-7b2e1f] ✓
+    │
+    ├─> Round 2: Tournament
+    │   ├─> [impl-7b2e1f] (current winner)
+    │   ├─> [impl-9d4c8a] ← Agent B: Improve code
+    │   ├─> Agent C: Compare both → Loser: impl-9d4c8a
+    │   └─> Winner: [impl-7b2e1f] ✓
+    │
+    └─> Final: Best implementation on winning branch
+```
+
+Each iteration creates a competing branch, improves it, and eliminates the worse implementation through AI comparison. The survivor becomes the champion for the next round.
 
 ## Help
 
