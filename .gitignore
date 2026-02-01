@@ -8,3 +8,6 @@ __*
 .env*
 
 app
+
+# Example test artifacts
+examples/test-project/
