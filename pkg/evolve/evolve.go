@@ -15,12 +15,12 @@ import (
 // EvolveConfig holds configuration for the evolution process
 type EvolveConfig struct {
 	Plan          string        // Initial implementation prompt
-	ImprovePrompt string        // Prompt for improvement agent
-	ComparePrompt string        // Prompt for comparison agent
+	ImprovePrompt string        // Prompt for improvement step
+	ComparePrompt string        // Prompt for comparison step
 	Iterations    int           // Number of evolution iterations
 	Sleep         time.Duration // Sleep duration between evolution rounds
 
-	// System prompts for each agent
+	// System prompts for each step
 	PlanSystemPrompt       string
 	PlanAppendSystemPrompt string
 
@@ -67,7 +67,7 @@ func Evolve(cfg EvolveConfig) (string, error) {
 	}
 
 	fmt.Println()
-	fmt.Println("🤖 Agent A: Implementing plan...")
+	fmt.Println("🔨 Implementing plan...")
 	fmt.Println()
 
 	planOpts := &claude.PromptOptions{
@@ -75,7 +75,7 @@ func Evolve(cfg EvolveConfig) (string, error) {
 		AppendSystemPrompt: cfg.PlanAppendSystemPrompt,
 	}
 	if _, err := claude.RunPrompt(cfg.Plan, planOpts); err != nil {
-		return "", fmt.Errorf("agent A failed: %w", err)
+		return "", fmt.Errorf("initial implementation failed: %w", err)
 	}
 
 	fmt.Println()
@@ -111,7 +111,7 @@ func Evolve(cfg EvolveConfig) (string, error) {
 		}
 
 		fmt.Println()
-		fmt.Println("🤖 Agent B: Improving code...")
+		fmt.Println("✨ Improving code...")
 		fmt.Println()
 
 		improveOpts := &claude.PromptOptions{
@@ -119,7 +119,7 @@ func Evolve(cfg EvolveConfig) (string, error) {
 			AppendSystemPrompt: cfg.ImproveAppendSystemPrompt,
 		}
 		if _, err := claude.RunPrompt(cfg.ImprovePrompt, improveOpts); err != nil {
-			return winner, fmt.Errorf("agent B failed: %w", err)
+			return winner, fmt.Errorf("improvement failed: %w", err)
 		}
 
 		fmt.Println()
@@ -130,7 +130,7 @@ func Evolve(cfg EvolveConfig) (string, error) {
 
 		// Compare branches
 		fmt.Println()
-		fmt.Println("🤖 Agent C: Comparing branches...")
+		fmt.Println("⚖️ Comparing implementations...")
 		fmt.Printf("   Branch 1: %s\n", winner)
 		fmt.Printf("   Branch 2: %s\n", branchB)
 		fmt.Println()
@@ -150,7 +150,7 @@ func Evolve(cfg EvolveConfig) (string, error) {
 		}
 		result, err := claude.RunPrompt(comparePrompt, compareOpts)
 		if err != nil {
-			return winner, fmt.Errorf("agent C failed: %w", err)
+			return winner, fmt.Errorf("comparison failed: %w", err)
 		}
 
 		// Parse the loser branch from Claude's response

@@ -33,20 +33,20 @@ agent-exec evolve <plan> -i <improve-prompt> -c <compare-prompt> -n <iterations>
 ```
 Base Branch
     │
-    ├─> [impl-a3f9c2] ← Agent A: Initial implementation
+    ├─> [impl-a3f9c2] ← Initial implementation
     │        │
     │        └─> Winner (Round 0)
     │
     ├─> Round 1: Tournament
     │   ├─> [impl-a3f9c2] (current winner)
-    │   ├─> [impl-7b2e1f] ← Agent B: Improve code
-    │   ├─> Agent C: Compare both → Loser: impl-a3f9c2
+    │   ├─> [impl-7b2e1f] ← Improve code
+    │   ├─> Compare implementations → Loser: impl-a3f9c2
     │   └─> Winner: [impl-7b2e1f] ✓
     │
     ├─> Round 2: Tournament
     │   ├─> [impl-7b2e1f] (current winner)
-    │   ├─> [impl-9d4c8a] ← Agent B: Improve code
-    │   ├─> Agent C: Compare both → Loser: impl-9d4c8a
+    │   ├─> [impl-9d4c8a] ← Improve code
+    │   ├─> Compare implementations → Loser: impl-9d4c8a
     │   └─> Winner: [impl-7b2e1f] ✓
     │
     └─> Final: Best implementation on winning branch

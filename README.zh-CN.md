@@ -33,20 +33,20 @@ agent-exec evolve <plan> -i <improve-prompt> -c <compare-prompt> -n <iterations>
 ```
 基础分支
     │
-    ├─> [impl-a3f9c2] ← Agent A: 初始实现
+    ├─> [impl-a3f9c2] ← 初始实现
     │        │
     │        └─> 胜者（第 0 轮）
     │
     ├─> 第 1 轮：锦标赛
     │   ├─> [impl-a3f9c2]（当前胜者）
-    │   ├─> [impl-7b2e1f] ← Agent B: 改进代码
-    │   ├─> Agent C: 比较两者 → 败者：impl-a3f9c2
+    │   ├─> [impl-7b2e1f] ← 改进代码
+    │   ├─> 比较实现 → 败者：impl-a3f9c2
     │   └─> 胜者：[impl-7b2e1f] ✓
     │
     ├─> 第 2 轮：锦标赛
     │   ├─> [impl-7b2e1f]（当前胜者）
-    │   ├─> [impl-9d4c8a] ← Agent B: 改进代码
-    │   ├─> Agent C: 比较两者 → 败者：impl-9d4c8a
+    │   ├─> [impl-9d4c8a] ← 改进代码
+    │   ├─> 比较实现 → 败者：impl-9d4c8a
     │   └─> 胜者：[impl-7b2e1f] ✓
     │
     └─> 最终：胜出分支上的最佳实现
