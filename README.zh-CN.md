@@ -17,13 +17,13 @@ go install github.com/LinHanLab/agent-exec/cmd/agent-exec@latest
 通过竞争分支的锦标赛式迭代改进来演化代码。
 
 ```bash
-agent-exec evolve <plan>
-agent-exec evolve <plan> -i <improve-prompt> -c <compare-prompt> -n <iterations>
+agent-exec evolve <prompt>
+agent-exec evolve <prompt> -i <improve-prompt> -c <compare-prompt> -n <iterations>
 ```
 
 | 参数 | 说明 |
 |------|------|
-| 位置参数 | 实现计划（需引号包裹） |
+| 位置参数 | 提示词字符串（需引号包裹） |
 | `-i, --improve` | 改进提示词（默认："improve the code quality and fix any issues"） |
 | `-c, --compare` | 比较提示词（默认："compare these two implementations and determine which is worse"） |
 | `-n, --iterations` | 演化迭代次数（默认：3） |
