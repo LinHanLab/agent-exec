@@ -2,7 +2,7 @@
 
 English | [中文](README.zh-CN.md)
 
-A CLI tool to run Claude Code headlessly with human-readable formatted output. Supports one-shot execution and iterative batch processing with configurable intervals.
+Designed for long-running AI agent tasks, preventing LLM early stops, trading time and tokens for the best results. Minimal Claude Code controller for iterative refinement and Ralph loops.
 
 ## Installation
 
