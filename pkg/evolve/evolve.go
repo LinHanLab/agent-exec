@@ -64,7 +64,7 @@ func Evolve(cfg EvolveConfig) (string, error) {
 
 	fmt.Println()
 	fmt.Printf("📦 Squashing commits on %s\n", branchA)
-	if err := git.SquashToOneCommit(originalBranch, "implement: "+truncate(cfg.Plan, 50)); err != nil {
+	if err := git.SquashCommits(originalBranch, "implement: "+truncate(cfg.Plan, 50)); err != nil {
 		return "", fmt.Errorf("failed to squash: %w", err)
 	}
 
@@ -104,7 +104,7 @@ func Evolve(cfg EvolveConfig) (string, error) {
 
 		fmt.Println()
 		fmt.Printf("📦 Squashing commits on %s\n", branchB)
-		if err := git.SquashToOneCommit(originalBranch, "improve: round "+fmt.Sprint(i)); err != nil {
+		if err := git.SquashCommits(originalBranch, "improve: round "+fmt.Sprint(i)); err != nil {
 			return winner, fmt.Errorf("failed to squash improvement: %w", err)
 		}
 

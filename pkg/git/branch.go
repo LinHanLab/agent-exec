@@ -46,8 +46,8 @@ func Checkout(branch string) error {
 	return nil
 }
 
-// SquashToOneCommit squashes all commits on current branch relative to base into one commit
-func SquashToOneCommit(base, message string) error {
+// SquashCommits squashes all commits on current branch relative to base into one commit
+func SquashCommits(base, message string) error {
 	// Get the merge base
 	mergeBaseCmd := exec.Command("git", "merge-base", base, "HEAD")
 	mergeBaseOutput, err := mergeBaseCmd.Output()
@@ -60,6 +60,12 @@ func SquashToOneCommit(base, message string) error {
 	resetCmd := exec.Command("git", "reset", "--soft", mergeBase)
 	if output, err := resetCmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to reset: %s", string(output))
+	}
+
+	// Stage all changes including untracked files
+	addCmd := exec.Command("git", "add", ".")
+	if output, err := addCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to stage changes: %s", string(output))
 	}
 
 	// Commit all staged changes
