@@ -13,7 +13,7 @@ import (
 const maxResultDisplay = 200
 
 // ParseStreamJSON parses streaming JSON output from claude CLI and returns the final result text
-func ParseStreamJSON(reader io.Reader) (string, error) {
+func ParseStreamJSON(reader io.Reader, writer io.Writer) (string, error) {
 	scanner := bufio.NewScanner(reader)
 	buf := make([]byte, 0, 1024*1024)
 	scanner.Buffer(buf, 10*1024*1024)
@@ -28,7 +28,7 @@ func ParseStreamJSON(reader io.Reader) (string, error) {
 
 		var msg ClaudeMessage
 		if err := json.Unmarshal([]byte(line), &msg); err != nil {
-			fmt.Printf("⚠️ JSON parse error: %v\n", err)
+			_, _ = fmt.Fprintf(writer, "⚠️ JSON parse error: %v\n", err)
 			continue
 		}
 
@@ -37,14 +37,14 @@ func ParseStreamJSON(reader io.Reader) (string, error) {
 			for _, content := range msg.Message.Content {
 				switch content.Type {
 				case "text":
-					fmt.Printf("💬 %s\n", content.Text)
+					_, _ = fmt.Fprintf(writer, "💬 %s\n", content.Text)
 				case "tool_use":
-					fmt.Printf("🔧 %s%s%s", format.Bold, content.Name, format.Reset)
+					_, _ = fmt.Fprintf(writer, "🔧 %s%s%s", format.Bold, content.Name, format.Reset)
 					if len(content.Input) > 0 {
-						fmt.Println()
-						FormatToolInputs(content.Input)
+						_, _ = fmt.Fprintln(writer)
+						FormatToolInputs(writer, content.Input)
 					} else {
-						fmt.Println()
+						_, _ = fmt.Fprintln(writer)
 					}
 				}
 			}
@@ -54,18 +54,18 @@ func ParseStreamJSON(reader io.Reader) (string, error) {
 					resultStr := contentToString(content.Content)
 					if resultStr != "" {
 						result := truncateResult(resultStr, maxResultDisplay)
-						fmt.Printf("✅ %sResult%s: %s\n", format.Green, format.Reset, result)
+						_, _ = fmt.Fprintf(writer, "✅ %sResult%s: %s\n", format.Green, format.Reset, result)
 					}
 				}
 			}
 		case "result":
 			if msg.Result != "" {
 				resultText = msg.Result
-				fmt.Printf("✅ %s\n", msg.Result)
+				_, _ = fmt.Fprintf(writer, "✅ %s\n", msg.Result)
 			}
 			if msg.DurationMs > 0 {
 				durationSec := float64(msg.DurationMs) / 1000.0
-				fmt.Printf("⏱️ Duration: %.2fs\n", durationSec)
+				_, _ = fmt.Fprintf(writer, "⏱️ Duration: %.2fs\n", durationSec)
 			}
 		}
 	}
@@ -82,7 +82,7 @@ func truncateResult(result string, maxLen int) string {
 }
 
 // FormatToolInputs formats and prints tool inputs with proper alignment
-func FormatToolInputs(inputs map[string]interface{}) {
+func FormatToolInputs(writer io.Writer, inputs map[string]interface{}) {
 	keys := make([]string, 0, len(inputs))
 	for k := range inputs {
 		keys = append(keys, k)
@@ -95,7 +95,7 @@ func FormatToolInputs(inputs map[string]interface{}) {
 		if len(valueStr) > 100 {
 			valueStr = valueStr[:100] + "..."
 		}
-		fmt.Printf("     %s%s%s: %s\n", format.Cyan, key, format.Reset, valueStr)
+		_, _ = fmt.Fprintf(writer, "     %s%s%s: %s\n", format.Cyan, key, format.Reset, valueStr)
 	}
 }
 

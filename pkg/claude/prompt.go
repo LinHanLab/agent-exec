@@ -78,7 +78,7 @@ func RunPrompt(prompt string) (string, error) {
 		return "", fmt.Errorf("failed to start claude CLI: %w", err)
 	}
 
-	result, parseErr := ParseStreamJSON(stdout)
+	result, parseErr := ParseStreamJSON(stdout, os.Stdout)
 	if parseErr != nil {
 		_ = cmd.Wait()
 		return "", fmt.Errorf("failed to parse output: %w", parseErr)
