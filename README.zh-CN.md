@@ -12,22 +12,6 @@ go install github.com/LinHanLab/agent-exec/cmd/agent-exec@latest
 
 ## 使用方法
 
-### Run 命令
-
-执行提示词，支持可选的迭代次数和间隔时长。
-
-```bash
-agent-exec run <prompt>
-agent-exec run <prompt> -n <iterations>
-agent-exec run <prompt> -n <iterations> -s <sleep>
-```
-
-| 参数 | 说明 |
-|------|------|
-| 位置参数 | 提示词字符串（需引号包裹） |
-| `-n, --iterations` | 运行次数（默认：1） |
-| `-s, --sleep` | 迭代间隔时长（默认：0，格式：2h30m、30s 等） |
-
 ### Evolve 命令
 
 通过竞争分支的锦标赛式迭代改进来演化代码。
@@ -69,6 +53,22 @@ agent-exec evolve <plan> -i <improve-prompt> -c <compare-prompt> -n <iterations>
 ```
 
 每次迭代创建一个竞争分支，改进代码，然后通过 AI 比较淘汰较差的实现。幸存者成为下一轮的冠军。
+
+### Run 命令
+
+执行提示词，支持可选的迭代次数和间隔时长。
+
+```bash
+agent-exec run <prompt>
+agent-exec run <prompt> -n <iterations>
+agent-exec run <prompt> -n <iterations> -s <sleep>
+```
+
+| 参数 | 说明 |
+|------|------|
+| 位置参数 | 提示词字符串（需引号包裹） |
+| `-n, --iterations` | 运行次数（默认：1） |
+| `-s, --sleep` | 迭代间隔时长（默认：0，格式：2h30m、30s 等） |
 
 ## 帮助
 

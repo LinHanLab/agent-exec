@@ -12,22 +12,6 @@ go install github.com/LinHanLab/agent-exec/cmd/agent-exec@latest
 
 ## Usage
 
-### Run Command
-
-Execute prompts with optional iterations and sleep intervals.
-
-```bash
-agent-exec run <prompt>
-agent-exec run <prompt> -n <iterations>
-agent-exec run <prompt> -n <iterations> -s <sleep>
-```
-
-| Flag | Description |
-|------|-------------|
-| positional | Prompt string (quoted) |
-| `-n, --iterations` | Run count (default: 1) |
-| `-s, --sleep` | Sleep duration between iterations (default: 0, format: 2h30m, 30s, etc.) |
-
 ### Evolve Command
 
 Evolve code through tournament-style iterative improvement with competing branches.
@@ -69,6 +53,22 @@ Base Branch
 ```
 
 Each iteration creates a competing branch, improves it, and eliminates the worse implementation through AI comparison. The survivor becomes the champion for the next round.
+
+### Run Command
+
+Execute prompts with optional iterations and sleep intervals.
+
+```bash
+agent-exec run <prompt>
+agent-exec run <prompt> -n <iterations>
+agent-exec run <prompt> -n <iterations> -s <sleep>
+```
+
+| Flag | Description |
+|------|-------------|
+| positional | Prompt string (quoted) |
+| `-n, --iterations` | Run count (default: 1) |
+| `-s, --sleep` | Sleep duration between iterations (default: 0, format: 2h30m, 30s, etc.) |
 
 ## Help
 
