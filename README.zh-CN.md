@@ -12,6 +12,10 @@ go install github.com/LinHanLab/agent-exec/cmd/agent-exec@latest
 
 ## 使用方法
 
+### Run 命令
+
+执行提示词，支持可选的迭代次数和间隔时长。
+
 ```bash
 agent-exec run <prompt>
 agent-exec run <prompt> -n <iterations>
@@ -24,21 +28,36 @@ agent-exec run <prompt> -n <iterations> -s <sleep>
 | `-n, --iterations` | 运行次数（默认：1） |
 | `-s, --sleep` | 迭代间隔时长（默认：0，格式：2h30m、30s 等） |
 
-### 示例
+**示例：**
 
-执行单个提示词：
 ```bash
 agent-exec run "解释 goroutine 的工作原理"
-```
-
-运行 5 次迭代：
-```bash
 agent-exec run "审查代码" -n 5
+agent-exec run "分析日志" -n 3 -s 2m
 ```
 
-运行 3 次迭代，每次间隔 2 分钟：
+### Evolve 命令
+
+通过竞争分支的锦标赛式迭代改进来演化代码。
+
 ```bash
-agent-exec run "分析日志" -n 3 -s 2m
+agent-exec evolve <plan>
+agent-exec evolve <plan> -i <improve-prompt> -c <compare-prompt> -n <iterations>
+```
+
+| 参数 | 说明 |
+|------|------|
+| 位置参数 | 实现计划（需引号包裹） |
+| `-i, --improve` | 改进提示词（默认："improve the code quality and fix any issues"） |
+| `-c, --compare` | 比较提示词（默认："compare these two implementations and determine which is worse"） |
+| `-n, --iterations` | 演化迭代次数（默认：3） |
+
+**示例：**
+
+```bash
+agent-exec evolve "实现用户 REST API"
+agent-exec evolve "构建 CLI 工具" -n 5
+agent-exec evolve "创建解析器" -i "优化性能" -c "哪个更快？"
 ```
 
 ## 帮助
