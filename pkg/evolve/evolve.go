@@ -14,11 +14,12 @@ import (
 
 // EvolveConfig holds configuration for the evolution process
 type EvolveConfig struct {
-	Plan          string        // Initial implementation prompt
-	ImprovePrompt string        // Prompt for improvement step
-	ComparePrompt string        // Prompt for comparison step
-	Iterations    int           // Number of evolution iterations
-	Sleep         time.Duration // Sleep duration between evolution rounds
+	Plan               string        // Initial implementation prompt
+	ImprovePrompt      string        // Prompt for improvement step
+	ComparePrompt      string        // Prompt for comparison step
+	Iterations         int           // Number of evolution iterations
+	Sleep              time.Duration // Sleep duration between evolution rounds
+	CompareErrorRetries int           // Number of retries when comparison parsing fails
 
 	// System prompts for each step
 	PlanSystemPrompt       string
@@ -148,13 +149,31 @@ func Evolve(cfg EvolveConfig) (string, error) {
 			SystemPrompt:       cfg.CompareSystemPrompt,
 			AppendSystemPrompt: cfg.CompareAppendSystemPrompt,
 		}
-		result, err := claude.RunPrompt(comparePrompt, compareOpts)
-		if err != nil {
-			return winner, fmt.Errorf("comparison failed: %w", err)
-		}
 
-		// Parse the loser branch from Claude's response
-		loser := parseBranchFromResponse(result, winner, branchB)
+		// Retry comparison if parsing fails
+		var loser string
+		var result string
+		var err error
+		for attempt := 0; attempt <= cfg.CompareErrorRetries; attempt++ {
+			if attempt > 0 {
+				fmt.Printf("⚠️  Retry attempt %d/%d for comparison...\n", attempt, cfg.CompareErrorRetries)
+			}
+
+			result, err = claude.RunPrompt(comparePrompt, compareOpts)
+			if err != nil {
+				return winner, fmt.Errorf("comparison failed: %w", err)
+			}
+
+			// Try to parse the loser branch from Claude's response
+			loser, err = parseBranchFromResponse(result, winner, branchB)
+			if err == nil {
+				break // Successfully parsed
+			}
+
+			if attempt == cfg.CompareErrorRetries {
+				return winner, fmt.Errorf("failed to parse comparison result after %d retries: %w", cfg.CompareErrorRetries, err)
+			}
+		}
 
 		// Update winner
 		if loser == winner {
@@ -196,7 +215,7 @@ func Evolve(cfg EvolveConfig) (string, error) {
 }
 
 // parseBranchFromResponse extracts the loser branch name from Claude's response
-func parseBranchFromResponse(response, branch1, branch2 string) string {
+func parseBranchFromResponse(response, branch1, branch2 string) (string, error) {
 	response = strings.TrimSpace(response)
 
 	// Check if response contains either branch name
@@ -204,10 +223,10 @@ func parseBranchFromResponse(response, branch1, branch2 string) string {
 	contains2 := strings.Contains(response, branch2)
 
 	if contains1 && !contains2 {
-		return branch1
+		return branch1, nil
 	}
 	if contains2 && !contains1 {
-		return branch2
+		return branch2, nil
 	}
 
 	// If both or neither found, check last line (Claude was asked to respond with just the name)
@@ -215,16 +234,14 @@ func parseBranchFromResponse(response, branch1, branch2 string) string {
 	lastLine := strings.TrimSpace(lines[len(lines)-1])
 
 	if lastLine == branch1 {
-		return branch1
+		return branch1, nil
 	}
 	if lastLine == branch2 {
-		return branch2
+		return branch2, nil
 	}
 
-	// todo: should just error
-	// Default to branch2 (the newer one) if parsing fails
-	fmt.Printf("⚠️  Could not parse loser from response, defaulting to: %s\n", branch2)
-	return branch2
+	// Return error if parsing fails
+	return "", fmt.Errorf("could not parse loser branch from response")
 }
 
 func truncate(s string, maxLen int) string {

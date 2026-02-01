@@ -14,6 +14,7 @@ var (
 	comparePrompt string
 	evolveIters   int
 	evolveSleep   time.Duration
+	compareErrorRetries int
 
 	planSystemPrompt       string
 	planAppendSystemPrompt string
@@ -52,6 +53,7 @@ Examples:
 			ComparePrompt: comparePrompt,
 			Iterations:    evolveIters,
 			Sleep:         evolveSleep,
+			CompareErrorRetries: compareErrorRetries,
 
 			PlanSystemPrompt:       planSystemPrompt,
 			PlanAppendSystemPrompt: planAppendSystemPrompt,
@@ -84,6 +86,7 @@ func init() {
 	evolveCmd.Flags().StringVarP(&comparePrompt, "compare", "c", "compare these two implementations and determine which is worse", "prompt for comparison agent")
 	evolveCmd.Flags().IntVarP(&evolveIters, "iterations", "n", 3, "number of evolution iterations")
 	evolveCmd.Flags().DurationVarP(&evolveSleep, "sleep", "s", 0, "sleep duration between evolution rounds (e.g., 2h30m, 10s)")
+	evolveCmd.Flags().IntVar(&compareErrorRetries, "compare-error-retries", 3, "number of retries when comparison parsing fails")
 
 	evolveCmd.Flags().StringVar(&planSystemPrompt, "system-prompt", "", "replace system prompt for plan agent (empty = use Claude Code defaults)")
 	evolveCmd.Flags().StringVar(&planAppendSystemPrompt, "append-system-prompt", "", "append to system prompt for plan agent (empty = use Claude Code defaults)")
