@@ -26,6 +26,8 @@ var (
 
 	compareSystemPrompt       string
 	compareAppendSystemPrompt string
+
+	evolveVerbose bool
 )
 
 var evolveCmd = &cobra.Command{
@@ -69,7 +71,7 @@ Examples:
 
 		// Create emitter and display
 		emitter := events.NewChannelEmitter(100)
-		formatter := display.NewConsoleFormatter(os.Stdout)
+		formatter := display.NewConsoleFormatter(os.Stdout, evolveVerbose)
 		disp := display.NewDisplay(formatter, emitter)
 		disp.Start()
 
@@ -106,4 +108,6 @@ func init() {
 
 	evolveCmd.Flags().StringVar(&compareSystemPrompt, "compare-system-prompt", "", "replace system prompt for compare agent (empty = use Claude Code defaults)")
 	evolveCmd.Flags().StringVar(&compareAppendSystemPrompt, "append-compare-system-prompt", "", "append to system prompt for compare agent (empty = use Claude Code defaults)")
+
+	evolveCmd.Flags().BoolVarP(&evolveVerbose, "verbose", "v", false, "show full content without truncation")
 }

@@ -11,7 +11,7 @@ import (
 
 func TestConsoleFormatter_RunPromptStarted(t *testing.T) {
 	buf := &bytes.Buffer{}
-	formatter := NewConsoleFormatter(buf)
+	formatter := NewConsoleFormatter(buf, false)
 
 	event := events.Event{
 		Type: events.EventRunPromptStarted,
@@ -67,7 +67,7 @@ func TestConsoleFormatter_RunPromptStarted(t *testing.T) {
 
 func TestConsoleFormatter_ToolUse(t *testing.T) {
 	buf := &bytes.Buffer{}
-	formatter := NewConsoleFormatter(buf)
+	formatter := NewConsoleFormatter(buf, false)
 
 	event := events.Event{
 		Type: events.EventClaudeToolUse,
@@ -124,7 +124,7 @@ func TestConsoleFormatter_ToolUse(t *testing.T) {
 
 func TestConsoleFormatter_EvolveStarted(t *testing.T) {
 	buf := &bytes.Buffer{}
-	formatter := NewConsoleFormatter(buf)
+	formatter := NewConsoleFormatter(buf, false)
 
 	event := events.Event{
 		Type: events.EventEvolveStarted,
@@ -164,7 +164,7 @@ func TestConsoleFormatter_EvolveStarted(t *testing.T) {
 
 func TestConsoleFormatter_ExecutionResult(t *testing.T) {
 	buf := &bytes.Buffer{}
-	formatter := NewConsoleFormatter(buf)
+	formatter := NewConsoleFormatter(buf, false)
 
 	event := events.Event{
 		Type: events.EventClaudeExecutionResult,
@@ -199,7 +199,7 @@ func TestConsoleFormatter_ExecutionResult(t *testing.T) {
 
 func TestDisplay_StartAndWait(t *testing.T) {
 	buf := &bytes.Buffer{}
-	formatter := NewConsoleFormatter(buf)
+	formatter := NewConsoleFormatter(buf, false)
 	emitter := events.NewChannelEmitter(10)
 
 	display := NewDisplay(formatter, emitter)
@@ -228,7 +228,7 @@ func TestDisplay_StartAndWait(t *testing.T) {
 
 func TestDisplay_MultipleEvents(t *testing.T) {
 	buf := &bytes.Buffer{}
-	formatter := NewConsoleFormatter(buf)
+	formatter := NewConsoleFormatter(buf, false)
 	emitter := events.NewChannelEmitter(10)
 
 	display := NewDisplay(formatter, emitter)

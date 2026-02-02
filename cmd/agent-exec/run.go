@@ -16,6 +16,7 @@ var (
 	sleep              time.Duration
 	systemPrompt       string
 	appendSystemPrompt string
+	verbose            bool
 )
 
 var runCmd = &cobra.Command{
@@ -38,7 +39,7 @@ Examples:
 
 		// Create emitter and display
 		emitter := events.NewChannelEmitter(100)
-		formatter := display.NewConsoleFormatter(os.Stdout)
+		formatter := display.NewConsoleFormatter(os.Stdout, verbose)
 		disp := display.NewDisplay(formatter, emitter)
 		disp.Start()
 
@@ -70,4 +71,5 @@ func init() {
 	runCmd.Flags().DurationVarP(&sleep, "sleep", "s", 0, "sleep duration between iterations (e.g., 2h30m, 10s)")
 	runCmd.Flags().StringVar(&systemPrompt, "system-prompt", "", "replace entire system prompt (empty = use Claude Code defaults)")
 	runCmd.Flags().StringVar(&appendSystemPrompt, "append-system-prompt", "", "append to default system prompt (empty = use Claude Code defaults)")
+	runCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "show full content without truncation")
 }

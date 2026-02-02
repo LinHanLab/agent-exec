@@ -225,7 +225,7 @@ func TestParseStreamJSON(t *testing.T) {
 			reader := strings.NewReader(tt.input)
 			emitter := events.NewChannelEmitter(100)
 			writer := &bytes.Buffer{}
-			formatter := display.NewConsoleFormatter(writer)
+			formatter := display.NewConsoleFormatter(writer, true) // Use verbose mode for tests
 			disp := display.NewDisplay(formatter, emitter)
 			disp.Start()
 
