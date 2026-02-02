@@ -5,9 +5,9 @@ import (
 	"os"
 	"time"
 
+	"github.com/LinHanLab/agent-exec/pkg/commands/evolve"
 	"github.com/LinHanLab/agent-exec/pkg/display"
 	"github.com/LinHanLab/agent-exec/pkg/events"
-	"github.com/LinHanLab/agent-exec/pkg/evolve"
 	"github.com/spf13/cobra"
 )
 

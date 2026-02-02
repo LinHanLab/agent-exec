@@ -30,6 +30,7 @@ agent-exec evolve <prompt> -n <iterations> -s <sleep>
 | `-n, --iterations` | Evolution iterations (default: 3) |
 | `-s, --sleep` | Sleep duration between evolution rounds (default: 0, format: 2h30m, 30s, etc.) |
 | `--compare-error-retries` | Number of retries when comparison parsing fails (default: 3) |
+| `-v, --verbose` | Show full content without truncation |
 | `--system-prompt` | Replace system prompt for plan agent (empty = use Claude Code defaults) |
 | `--append-system-prompt` | Append to system prompt for plan agent (empty = use Claude Code defaults) |
 | `--improve-system-prompt` | Replace system prompt for improve agent (empty = use Claude Code defaults) |
@@ -63,21 +64,22 @@ Base Branch
 
 Each iteration creates a competing branch, improves it, and eliminates the worse implementation through AI comparison. The survivor becomes the champion for the next round.
 
-### Run Command
+### Loop Command
 
-Execute prompts with optional iterations and sleep intervals.
+Execute prompts in a loop with optional iterations and sleep intervals.
 
 ```bash
-agent-exec run <prompt>
-agent-exec run <prompt> -n <iterations>
-agent-exec run <prompt> -n <iterations> -s <sleep>
+agent-exec loop <prompt>
+agent-exec loop <prompt> -n <iterations>
+agent-exec loop <prompt> -n <iterations> -s <sleep>
 ```
 
 | Flag | Description |
 |------|-------------|
 | positional | Prompt string (quoted) |
-| `-n, --iterations` | Run count (default: 1) |
+| `-n, --iterations` | Number of iterations to run (default: 1) |
 | `-s, --sleep` | Sleep duration between iterations (default: 0, format: 2h30m, 30s, etc.) |
+| `-v, --verbose` | Show full content without truncation |
 | `--system-prompt` | Replace entire system prompt (empty = use Claude Code defaults) |
 | `--append-system-prompt` | Append to default system prompt (empty = use Claude Code defaults) |
 
@@ -85,6 +87,6 @@ agent-exec run <prompt> -n <iterations> -s <sleep>
 
 ```bash
 agent-exec --help
-agent-exec run --help
+agent-exec loop --help
 agent-exec evolve --help
 ```

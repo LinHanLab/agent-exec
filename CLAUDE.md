@@ -43,13 +43,18 @@ go test -run TestFunctionName ./pkg/... # Specific test function
 - **cmd/agent-exec**: CLI entry point using cobra
   - `main.go`: Entry point
   - `root.go`: Root command definition
-  - `run.go`: Run command implementation with iteration/sleep flags
+  - `loop.go`: Loop command implementation with iteration/sleep flags
+  - `evolve.go`: Evolve command implementation
 
-- **pkg/claude**: Core Claude CLI interaction
-  - `prompt.go`: Executes claude CLI commands, handles signal interrupts
+- **pkg/claude**: Core Claude CLI interaction utilities
+  - `prompt.go`: Executes claude CLI commands, handles basic prompt execution
   - `parser.go`: Parses streaming JSON output from claude CLI
   - `types.go`: JSON structure definitions for claude CLI output
-  - `validate.go`: Input validation for prompts and loop arguments
+  - `validate.go`: Input validation for prompts
+
+- **pkg/commands**: Command-specific business logic
+  - `loop/`: Loop command logic with iteration and sleep handling
+  - `evolve/`: Evolve command logic for tournament-style code improvement
 
 - **pkg/format**: Text formatting utilities
   - `text.go`: Text truncation, wrapping, and prefixed printing
@@ -63,7 +68,7 @@ go test -run TestFunctionName ./pkg/... # Specific test function
 - Tool results (✅)
 - Final result with duration (⏱️)
 
-**Graceful Interruption**: RunPromptLoop uses signal channels to handle SIGINT/SIGTERM during both execution and sleep periods, allowing clean shutdown of multi-iteration runs.
+**Graceful Interruption**: The loop command (pkg/commands/loop) uses signal channels to handle SIGINT/SIGTERM during both execution and sleep periods, allowing clean shutdown of multi-iteration runs.
 
 **Display Formatting**: Prompts are truncated to 270 chars and wrapped at 76 chars width with a "▐ " prefix for visual clarity.
 

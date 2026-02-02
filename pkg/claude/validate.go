@@ -17,12 +17,3 @@ func ValidatePrompt(prompt string) error {
 
 	return nil
 }
-
-// ValidateLoopArgs validates iteration arguments
-func ValidateLoopArgs(iterations int, prompt string) error {
-	if iterations < 1 {
-		return errors.New("iterations must be a positive number")
-	}
-
-	return ValidatePrompt(prompt)
-}
