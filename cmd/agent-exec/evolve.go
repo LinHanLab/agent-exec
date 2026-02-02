@@ -27,7 +27,8 @@ var (
 	compareSystemPrompt       string
 	compareAppendSystemPrompt string
 
-	evolveVerbose bool
+	evolveVerbose     bool
+	debugKeepBranches bool
 )
 
 var evolveCmd = &cobra.Command{
@@ -58,6 +59,7 @@ Examples:
 			Iterations:          evolveIters,
 			Sleep:               evolveSleep,
 			CompareErrorRetries: compareErrorRetries,
+			DebugKeepBranches:   debugKeepBranches,
 
 			PlanSystemPrompt:       planSystemPrompt,
 			PlanAppendSystemPrompt: planAppendSystemPrompt,
@@ -110,4 +112,5 @@ func init() {
 	evolveCmd.Flags().StringVar(&compareAppendSystemPrompt, "append-compare-system-prompt", "", "append to system prompt for compare agent (empty = use Claude Code defaults)")
 
 	evolveCmd.Flags().BoolVarP(&evolveVerbose, "verbose", "v", false, "show full content without truncation")
+	evolveCmd.Flags().BoolVar(&debugKeepBranches, "debug-keep-branches", false, "debug mode: keep all branches instead of deleting losers")
 }

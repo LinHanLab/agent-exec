@@ -7,6 +7,9 @@ echo "Setting up test project directory..."
 rm -rf test-project
 mkdir -p test-project
 cd test-project
+rm -rf /tmp/agent-exec/test-project
+mkdir -p /tmp/agent-exec/test-project
+cd /tmp/agent-exec/test-project
 
 # Initialize git repository
 echo "Initializing git repository..."
@@ -31,7 +34,11 @@ INITIAL_PROMPT="Create a snake game in golang with the following features:
 - Game over detection when snake hits walls or itself
 - Smooth gameplay with configurable speed"
 
-IMPROVE_PROMPT="improve game performance, code quality, and user experience"
+IMPROVE_PROMPT="improve game performance, code quality, and user experience
+
+Additionally:
+- Write down a markdown document about the improvement reason
+- Use the current git branch name as the filename"
 
 COMPARE_PROMPT="compare these two implementations and determine which has worse performance, code quality, or gameplay experience"
 

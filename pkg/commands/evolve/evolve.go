@@ -21,6 +21,7 @@ type EvolveConfig struct {
 	Iterations          int           // Number of evolution iterations
 	Sleep               time.Duration // Sleep duration between evolution rounds
 	CompareErrorRetries int           // Number of retries when comparison parsing fails
+	DebugKeepBranches   bool          // Debug mode: keep all branches instead of deleting losers
 
 	// System prompts for each step
 	PlanSystemPrompt       string
@@ -250,8 +251,10 @@ func (r *EvolutionRunner) compareAndUpdate(challenger string) error {
 		return err
 	}
 
-	if err := r.gitClient.DeleteBranch(loser); err != nil {
-		return err
+	if !r.config.DebugKeepBranches {
+		if err := r.gitClient.DeleteBranch(loser); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -306,11 +309,4 @@ func parseBranchFromResponse(response, branch1, branch2 string) (string, error) 
 
 	// Return error if parsing fails
 	return "", fmt.Errorf("could not parse loser branch from response")
-}
-
-func truncate(s string, maxLen int) string {
-	if len(s) <= maxLen {
-		return s
-	}
-	return s[:maxLen-3] + "..."
 }
