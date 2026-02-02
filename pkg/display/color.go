@@ -10,6 +10,9 @@ const (
 	Red     = "\033[31m"
 	Magenta = "\033[35m"
 
+	// Text effects
+	ReverseVideo = "\033[7m"
+
 	// Combined styles
 	BoldCyan   = "\033[1;36m"
 	BoldYellow = "\033[1;33m"

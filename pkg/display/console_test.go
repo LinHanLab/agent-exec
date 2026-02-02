@@ -59,9 +59,25 @@ func TestConsoleFormatter_RunPromptStarted(t *testing.T) {
 		t.Error("Expected output to contain base URL")
 	}
 
-	// Verify color code is BoldCyan
+	// Verify color code is BoldCyan with reverse video
 	if !strings.HasPrefix(output, BoldCyan) {
 		t.Error("Expected output to start with BoldCyan color code")
+	}
+	if !strings.Contains(output, ReverseVideo) {
+		t.Error("Expected output to contain reverse video code")
+	}
+
+	// Verify content is indented with 4 spaces
+	lines := strings.Split(stripped, "\n")
+	foundIndentedContent := false
+	for _, line := range lines {
+		if strings.HasPrefix(line, "    ") && strings.Contains(line, "```") {
+			foundIndentedContent = true
+			break
+		}
+	}
+	if !foundIndentedContent {
+		t.Error("Expected code block to be indented with 4 spaces")
 	}
 }
 
@@ -116,9 +132,22 @@ func TestConsoleFormatter_ToolUse(t *testing.T) {
 		t.Error("Expected output to contain param2")
 	}
 
-	// Verify no color (empty string for tool use)
-	if strings.HasPrefix(output, BoldCyan) || strings.HasPrefix(output, BoldYellow) || strings.HasPrefix(output, Magenta) {
-		t.Error("Expected no color code for tool use")
+	// Verify reverse video is applied (no color prefix for tool use, but reverse video should be present)
+	if !strings.Contains(output, ReverseVideo) {
+		t.Error("Expected output to contain reverse video code")
+	}
+
+	// Verify content is indented with 4 spaces
+	lines := strings.Split(stripped, "\n")
+	foundIndentedContent := false
+	for _, line := range lines {
+		if strings.HasPrefix(line, "    ") && strings.Contains(line, "```json") {
+			foundIndentedContent = true
+			break
+		}
+	}
+	if !foundIndentedContent {
+		t.Error("Expected code block to be indented with 4 spaces")
 	}
 }
 
@@ -156,9 +185,25 @@ func TestConsoleFormatter_EvolveStarted(t *testing.T) {
 		t.Error("Expected output to contain iterations count")
 	}
 
-	// Verify color code is BoldYellow
-	if !strings.HasPrefix(output, BoldYellow) {
-		t.Error("Expected output to start with BoldYellow color code")
+	// Verify color code is BoldYellow with reverse video
+	if !strings.Contains(output, BoldYellow) {
+		t.Error("Expected output to contain BoldYellow color code")
+	}
+	if !strings.Contains(output, ReverseVideo) {
+		t.Error("Expected output to contain reverse video code")
+	}
+
+	// Verify content is indented with 4 spaces
+	lines := strings.Split(stripped, "\n")
+	foundIndentedContent := false
+	for _, line := range lines {
+		if strings.HasPrefix(line, "    ") && strings.Contains(line, "Iterations") {
+			foundIndentedContent = true
+			break
+		}
+	}
+	if !foundIndentedContent {
+		t.Error("Expected iteration count to be indented with 4 spaces")
 	}
 }
 
@@ -191,9 +236,12 @@ func TestConsoleFormatter_ExecutionResult(t *testing.T) {
 		t.Error("Expected output to contain formatted duration")
 	}
 
-	// Verify color code is BoldGreen
-	if !strings.HasPrefix(output, BoldGreen) {
-		t.Error("Expected output to start with BoldGreen color code")
+	// Verify color code is BoldGreen with reverse video
+	if !strings.Contains(output, BoldGreen) {
+		t.Error("Expected output to contain BoldGreen color code")
+	}
+	if !strings.Contains(output, ReverseVideo) {
+		t.Error("Expected output to contain reverse video code")
 	}
 }
 
