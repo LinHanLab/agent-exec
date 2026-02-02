@@ -9,13 +9,13 @@ import (
 	"github.com/LinHanLab/agent-exec/pkg/events"
 )
 
-func TestConsoleFormatter_PromptStarted(t *testing.T) {
+func TestConsoleFormatter_RunPromptStarted(t *testing.T) {
 	buf := &bytes.Buffer{}
 	formatter := NewConsoleFormatter(buf)
 
 	event := events.Event{
-		Type: events.EventPromptStarted,
-		Data: events.PromptStartedData{
+		Type: events.EventRunPromptStarted,
+		Data: events.RunPromptStartedData{
 			Prompt:  "test prompt",
 			Cwd:     "/test/dir",
 			BaseURL: "https://api.anthropic.com",
@@ -240,7 +240,7 @@ func TestDisplay_MultipleEvents(t *testing.T) {
 	display := NewDisplay(formatter, emitter)
 	display.Start()
 
-	emitter.Emit(events.EventPromptStarted, events.PromptStartedData{
+	emitter.Emit(events.EventRunPromptStarted, events.RunPromptStartedData{
 		Prompt: "test",
 	})
 	emitter.Emit(events.EventClaudeAssistantMessage, events.AssistantMessageData{

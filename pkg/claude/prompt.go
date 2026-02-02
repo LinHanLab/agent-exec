@@ -64,7 +64,7 @@ func RunPrompt(prompt string, opts *PromptOptions, emitter events.Emitter) (stri
 		return "", err
 	}
 
-	emitter.Emit(events.EventPromptStarted, events.PromptStartedData{
+	emitter.Emit(events.EventRunPromptStarted, events.RunPromptStartedData{
 		Prompt:   prompt,
 		BaseURL:  os.Getenv("ANTHROPIC_BASE_URL"),
 		Cwd:      cwd,

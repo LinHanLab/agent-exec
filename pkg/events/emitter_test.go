@@ -11,17 +11,17 @@ func TestChannelEmitter_EmitAndSubscribe(t *testing.T) {
 
 	ch := emitter.Subscribe()
 
-	testData := PromptStartedData{Prompt: "test prompt"}
-	emitter.Emit(EventPromptStarted, testData)
+	testData := RunPromptStartedData{Prompt: "test prompt"}
+	emitter.Emit(EventRunPromptStarted, testData)
 
 	select {
 	case event := <-ch:
-		if event.Type != EventPromptStarted {
-			t.Errorf("Expected event type %s, got %s", EventPromptStarted, event.Type)
+		if event.Type != EventRunPromptStarted {
+			t.Errorf("Expected event type %s, got %s", EventRunPromptStarted, event.Type)
 		}
-		data, ok := event.Data.(PromptStartedData)
+		data, ok := event.Data.(RunPromptStartedData)
 		if !ok {
-			t.Errorf("Expected PromptStartedData, got %T", event.Data)
+			t.Errorf("Expected RunPromptStartedData, got %T", event.Data)
 		}
 		if data.Prompt != "test prompt" {
 			t.Errorf("Expected prompt 'test prompt', got '%s'", data.Prompt)
@@ -38,7 +38,7 @@ func TestChannelEmitter_MultipleEvents(t *testing.T) {
 	ch := emitter.Subscribe()
 
 	events := []EventType{
-		EventPromptStarted,
+		EventRunPromptStarted,
 		EventClaudeAssistantMessage,
 		EventClaudeToolUse,
 	}
@@ -70,19 +70,19 @@ func TestChannelEmitter_Close(t *testing.T) {
 		t.Error("Expected channel to be closed")
 	}
 
-	emitter.Emit(EventPromptStarted, nil)
+	emitter.Emit(EventRunPromptStarted, nil)
 }
 
 func TestChannelEmitter_EmitAfterClose(t *testing.T) {
 	emitter := NewChannelEmitter(10)
 	emitter.Close()
 
-	emitter.Emit(EventPromptStarted, nil)
+	emitter.Emit(EventRunPromptStarted, nil)
 }
 
 func TestNullEmitter_Emit(t *testing.T) {
 	emitter := NewNullEmitter()
-	emitter.Emit(EventPromptStarted, PromptStartedData{Prompt: "test"})
+	emitter.Emit(EventRunPromptStarted, RunPromptStartedData{Prompt: "test"})
 }
 
 func TestNullEmitter_Subscribe(t *testing.T) {
@@ -107,7 +107,7 @@ func TestEvent_Timestamp(t *testing.T) {
 	ch := emitter.Subscribe()
 
 	before := time.Now()
-	emitter.Emit(EventPromptStarted, nil)
+	emitter.Emit(EventRunPromptStarted, nil)
 	after := time.Now()
 
 	select {

@@ -37,9 +37,9 @@ func (f *JSONFormatter) formatSmallTitle(title string) string {
 // formatCodeBlock wraps content in ``` with optional language
 func (f *JSONFormatter) formatCodeBlock(content string, language string) string {
 	if language != "" {
-		return fmt.Sprintf("```%s\n%s\n```", language, content)
+		return fmt.Sprintf("\n```%s\n%s\n```\n", language, content)
 	}
-	return fmt.Sprintf("```\n%s\n```", content)
+	return fmt.Sprintf("\n```\n%s\n```\n", content)
 }
 
 // formatPrettyJSON marshals data to indented JSON
@@ -71,8 +71,8 @@ func (f *JSONFormatter) Format(event events.Event) error {
 
 	switch event.Type {
 	// Small title event
-	case events.EventPromptStarted:
-		data := event.Data.(events.PromptStartedData)
+	case events.EventRunPromptStarted:
+		data := event.Data.(events.RunPromptStartedData)
 		title := "🚀 Prompt Started"
 		output = f.formatSmallTitle(title) + "\n" + f.formatCodeBlock(data.Prompt, "")
 
@@ -205,7 +205,7 @@ func (f *JSONFormatter) Format(event events.Event) error {
 
 	// Get color for event type and write colored output
 	color := f.getColorForEventType(event.Type)
-	_, err := fmt.Fprintf(f.writer, "%s%s%s\n", color, output, Reset)
+	_, err := fmt.Fprintf(f.writer, "%s%s%s\n\n", color, output, Reset)
 	if err != nil {
 		return fmt.Errorf("failed to write to console: %w", err)
 	}
@@ -226,7 +226,7 @@ func (f *JSONFormatter) formatTime() string {
 // getColorForEventType returns the ANSI color code for an event type
 func (f *JSONFormatter) getColorForEventType(eventType events.EventType) string {
 	switch eventType {
-	case events.EventPromptStarted:
+	case events.EventRunPromptStarted:
 		return BoldCyan
 
 	case events.EventLoopStarted,

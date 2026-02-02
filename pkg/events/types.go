@@ -8,7 +8,7 @@ type EventType string
 // Event type constants
 const (
 	// Prompt execution events
-	EventPromptStarted EventType = "prompt_started"
+	EventRunPromptStarted EventType = "run_prompt_started"
 
 	// Claude streaming events
 	EventClaudeAssistantMessage EventType = "claude_assistant_message"
@@ -50,8 +50,8 @@ type Event struct {
 	Data      interface{}
 }
 
-// PromptStartedData contains data for EventPromptStarted
-type PromptStartedData struct {
+// RunPromptStartedData contains data for EventRunPromptStarted
+type RunPromptStartedData struct {
 	Prompt   string
 	BaseURL  string
 	Cwd      string
