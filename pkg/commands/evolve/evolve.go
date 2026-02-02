@@ -134,6 +134,8 @@ func (r *EvolutionRunner) checkInterrupted() error {
 	}
 }
 
+const gitCommitMessage = "finished"
+
 // executeInitialPlan creates and runs the initial implementation
 func (r *EvolutionRunner) executeInitialPlan() error {
 	branchA := git.RandomBranchName()
@@ -150,7 +152,7 @@ func (r *EvolutionRunner) executeInitialPlan() error {
 		return err
 	}
 
-	if err := r.gitClient.SquashCommits(r.originalBranch, "implement: "+truncate(r.config.Plan, 50)); err != nil {
+	if err := r.gitClient.SquashCommits(r.originalBranch, gitCommitMessage); err != nil {
 		return err
 	}
 
@@ -178,12 +180,18 @@ func (r *EvolutionRunner) improveWinner(roundNum int) (string, error) {
 		return "", err
 	}
 
-	if err := r.gitClient.SquashCommits(r.originalBranch, "improve: round "+fmt.Sprint(roundNum)); err != nil {
+	if err := r.gitClient.SquashCommits(r.originalBranch, gitCommitMessage); err != nil {
 		return "", err
 	}
 
 	return challenger, nil
 }
+
+var comparePromptTemplate = `%s
+Branch names to compare:
+- %s
+- %s
+Respond with ONLY the branch name that should be DELETED (the worse one).`
 
 // compareAndUpdate compares branches and updates the winner
 func (r *EvolutionRunner) compareAndUpdate(challenger string) error {
@@ -192,7 +200,7 @@ func (r *EvolutionRunner) compareAndUpdate(challenger string) error {
 		Branch2: challenger,
 	})
 
-	comparePrompt := fmt.Sprintf("%s\n\nBranch names to compare:\n- %s\n- %s\n\nRespond with ONLY the branch name that should be DELETED (the worse one).",
+	comparePrompt := fmt.Sprintf(comparePromptTemplate,
 		r.config.ComparePrompt, r.currentWinner, challenger)
 
 	if err := r.gitClient.Checkout(r.originalBranch); err != nil {
