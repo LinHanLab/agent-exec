@@ -421,11 +421,9 @@ func (f *JSONFormatter) formatTime() string {
 // getColorForEventType returns the ANSI color code for an event type
 func (f *JSONFormatter) getColorForEventType(eventType events.EventType) string {
 	switch eventType {
-	// Priority 1 - Bold Cyan (ANTHROPIC_BASE_URL)
 	case events.EventPromptStarted:
 		return BoldCyan
 
-	// Priority 2 - Bold Yellow (Phase Markers)
 	case events.EventLoopStarted,
 		events.EventIterationStarted,
 		events.EventEvolveStarted,
@@ -435,7 +433,6 @@ func (f *JSONFormatter) getColorForEventType(eventType events.EventType) string 
 		events.EventSleepStarted:
 		return BoldYellow
 
-	// Priority 3 - Bold Green (Success Results)
 	case events.EventClaudeExecutionResult,
 		events.EventLoopCompleted,
 		events.EventEvolveCompleted,
@@ -443,27 +440,21 @@ func (f *JSONFormatter) getColorForEventType(eventType events.EventType) string 
 		events.EventWinnerSelected:
 		return BoldGreen
 
-	// Priority 4 - Bold Red (Errors/Interruptions)
 	case events.EventIterationFailed,
 		events.EventLoopInterrupted,
 		events.EventEvolveInterrupted:
 		return BoldRed
 
-	// Priority 5 - Magenta (Tool Operations)
-	case events.EventClaudeToolUse,
-		events.EventClaudeToolResult:
-		return Magenta
-
-	// Priority 6 - Cyan (Git Operations)
-	case events.EventGitBranchCreated,
+	case events.EventClaudeAssistantMessage,
+		events.EventComparisonRetry,
+		events.EventGitBranchCreated,
 		events.EventGitBranchCheckedOut,
 		events.EventGitBranchDeleted,
 		events.EventGitCommitsSquashed:
-		return Cyan
+		return Magenta
 
-	// Priority 7 - White/No Color (Regular Messages)
-	case events.EventClaudeAssistantMessage,
-		events.EventComparisonRetry:
+	case events.EventClaudeToolUse,
+		events.EventClaudeToolResult:
 		return ""
 
 	default:
