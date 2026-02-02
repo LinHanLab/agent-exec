@@ -63,24 +63,21 @@ func (f *ConsoleFormatter) Format(event events.Event) error {
 		if err = f.printPrefixed(displayPrompt, "▐ ", displayWidth); err != nil {
 			return err
 		}
-		err = f.writeln()
-
-	case events.EventPromptEnvironmentInfo:
-		data := event.Data.(events.PromptEnvironmentInfoData)
-		// Add emoji prefix based on message content
-		msg := data.Message
-		if strings.Contains(msg, "ANTHROPIC_BASE_URL") {
-			msg = "🌐 " + msg
-		} else if strings.Contains(msg, "Starting(cwd:") {
-			msg = "🚀 " + msg
+		if err = f.writeln(); err != nil {
+			return err
 		}
-		err = f.write("%s", msg)
 
-	case events.EventPromptCompleted:
-		// No output for this event (handled by ExecutionResult)
+		// Display BaseURL if set
+		if data.BaseURL != "" {
+			if err = f.write("🌐 ANTHROPIC_BASE_URL: %s\n", data.BaseURL); err != nil {
+				return err
+			}
+		}
 
-	case events.EventPromptFailed:
-		// Error handling is done at CLI level
+		// Display cwd info
+		if data.Cwd != "" {
+			err = f.write("🚀 Starting(cwd: %s%s)\n", data.Cwd, data.FileList)
+		}
 
 	// Claude streaming events
 	case events.EventClaudeAssistantMessage:

@@ -40,7 +40,7 @@ func TestChannelEmitter_MultipleEvents(t *testing.T) {
 	events := []EventType{
 		EventPromptStarted,
 		EventClaudeAssistantMessage,
-		EventPromptCompleted,
+		EventClaudeToolUse,
 	}
 
 	for _, eventType := range events {

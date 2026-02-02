@@ -59,23 +59,16 @@ func RunPrompt(prompt string, opts *PromptOptions, emitter events.Emitter) (stri
 		return "", err
 	}
 
-	emitter.Emit(events.EventPromptStarted, events.PromptStartedData{
-		Prompt: prompt,
-	})
-
-	if baseURL := os.Getenv("ANTHROPIC_BASE_URL"); baseURL != "" {
-		emitter.Emit(events.EventPromptEnvironmentInfo, events.PromptEnvironmentInfoData{
-			Message: fmt.Sprintf("ANTHROPIC_BASE_URL: %s\n", baseURL),
-		})
-	}
-
 	cwd, fileList, err := getCwdInfo(emitter)
 	if err != nil {
 		return "", err
 	}
 
-	emitter.Emit(events.EventPromptEnvironmentInfo, events.PromptEnvironmentInfoData{
-		Message: fmt.Sprintf("Starting(cwd: %s%s)\n", cwd, fileList),
+	emitter.Emit(events.EventPromptStarted, events.PromptStartedData{
+		Prompt:   prompt,
+		BaseURL:  os.Getenv("ANTHROPIC_BASE_URL"),
+		Cwd:      cwd,
+		FileList: fileList,
 	})
 
 	if opts == nil {
