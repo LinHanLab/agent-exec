@@ -365,7 +365,8 @@ func (f *JSONFormatter) Format(event events.Event) error {
 	case events.EventEvolveCompleted:
 		data := event.Data.(events.EvolveCompletedData)
 		color := f.getColorForEventType(event.Type)
-		message := fmt.Sprintf("🎉 Evolution completed: %s (Total: %s)", data.FinalBranch, f.formatDuration(data.TotalDuration))
+		message := fmt.Sprintf("🎉 Evolution completed, final branch: %s (total duration: %s)",
+			data.FinalBranch, f.formatDuration(data.TotalDuration))
 		output = f.applyReverseVideo(message, color)
 
 	case events.EventEvolveInterrupted:
