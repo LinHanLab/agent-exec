@@ -51,10 +51,6 @@ func (f *ConsoleFormatter) Format(event events.Event) error {
 	var err error
 	switch event.Type {
 	// Prompt execution events
-	case events.EventPromptValidationWarning:
-		data := event.Data.(events.PromptValidationWarningData)
-		err = f.write("⚠️ Warning: %s\n", data.Message)
-
 	case events.EventPromptStarted:
 		data := event.Data.(events.PromptStartedData)
 		if err = f.writeln("▐ 🪄PROMPT"); err != nil {

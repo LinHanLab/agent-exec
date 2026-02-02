@@ -33,23 +33,15 @@ func (opts *PromptOptions) BuildClaudeArgs(prompt string) []string {
 }
 
 // getCwdInfo retrieves current working directory and file list with error handling
-func getCwdInfo(emitter events.Emitter) (cwd, fileList string) {
-	var err error
+func getCwdInfo(emitter events.Emitter) (cwd, fileList string, err error) {
 	cwd, err = os.Getwd()
 	if err != nil {
-		emitter.Emit(events.EventPromptValidationWarning, events.PromptValidationWarningData{
-			Message: fmt.Sprintf("failed to get working directory: %v", err),
-		})
-		cwd = "unknown"
-		return
+		return "", "", fmt.Errorf("failed to get cwd: %w", err)
 	}
 
 	files, err := os.ReadDir(cwd)
 	if err != nil {
-		emitter.Emit(events.EventPromptValidationWarning, events.PromptValidationWarningData{
-			Message: fmt.Sprintf("failed to read directory: %v", err),
-		})
-		return
+		return "", "", fmt.Errorf("failed to read cwd files: %w", err)
 	}
 
 	var names []string
@@ -77,7 +69,11 @@ func RunPrompt(prompt string, opts *PromptOptions, emitter events.Emitter) (stri
 		})
 	}
 
-	cwd, fileList := getCwdInfo(emitter)
+	cwd, fileList, err := getCwdInfo(emitter)
+	if err != nil {
+		return "", err
+	}
+
 	emitter.Emit(events.EventPromptEnvironmentInfo, events.PromptEnvironmentInfoData{
 		Message: fmt.Sprintf("Starting(cwd: %s%s)\n", cwd, fileList),
 	})

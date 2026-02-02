@@ -8,11 +8,10 @@ type EventType string
 // Event type constants
 const (
 	// Prompt execution events
-	EventPromptStarted           EventType = "prompt_started"
-	EventPromptValidationWarning EventType = "prompt_validation_warning"
-	EventPromptEnvironmentInfo   EventType = "prompt_environment_info"
-	EventPromptCompleted         EventType = "prompt_completed"
-	EventPromptFailed            EventType = "prompt_failed"
+	EventPromptStarted         EventType = "prompt_started"
+	EventPromptEnvironmentInfo EventType = "prompt_environment_info"
+	EventPromptCompleted       EventType = "prompt_completed"
+	EventPromptFailed          EventType = "prompt_failed"
 
 	// Claude streaming events
 	EventClaudeAssistantMessage EventType = "claude_assistant_message"
@@ -56,11 +55,6 @@ type Event struct {
 // PromptStartedData contains data for EventPromptStarted
 type PromptStartedData struct {
 	Prompt string
-}
-
-// PromptValidationWarningData contains data for EventPromptValidationWarning
-type PromptValidationWarningData struct {
-	Message string
 }
 
 // PromptEnvironmentInfoData contains data for EventPromptEnvironmentInfo
