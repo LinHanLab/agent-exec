@@ -1,312 +1,472 @@
 package display
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
-	"sort"
-	"strings"
+	"time"
 
 	"github.com/LinHanLab/agent-exec/pkg/events"
 )
 
-const (
-	displayWidth     = 76
-	promptMaxLen     = 270
-	truncateSuffix   = "[...Truncated]"
-	maxResultDisplay = 200
-)
-
-// ConsoleFormatter formats events for console output with emoji and colors
-type ConsoleFormatter struct {
+// JSONFormatter formats events as JSON lines with color highlighting
+type JSONFormatter struct {
 	writer io.Writer
 }
 
-// NewConsoleFormatter creates a new ConsoleFormatter
-func NewConsoleFormatter(writer io.Writer) *ConsoleFormatter {
-	return &ConsoleFormatter{
+// NewConsoleFormatter creates a new JSONFormatter
+func NewConsoleFormatter(writer io.Writer) *JSONFormatter {
+	return &JSONFormatter{
 		writer: writer,
 	}
 }
 
-// write is a helper that checks write errors and returns early
-func (f *ConsoleFormatter) write(format string, args ...interface{}) error {
-	_, err := fmt.Fprintf(f.writer, format, args...)
-	if err != nil {
-		return fmt.Errorf("failed to write to console: %w", err)
-	}
-	return nil
-}
-
-// writeln is a helper that checks write errors and returns early
-func (f *ConsoleFormatter) writeln(args ...interface{}) error {
-	_, err := fmt.Fprintln(f.writer, args...)
-	if err != nil {
-		return fmt.Errorf("failed to write line to console: %w", err)
-	}
-	return nil
-}
-
-// Format processes an event and outputs it to the console
-func (f *ConsoleFormatter) Format(event events.Event) error {
+// Format processes an event and outputs it as a colored JSON line
+func (f *JSONFormatter) Format(event events.Event) error {
+	var jsonBytes []byte
 	var err error
+
 	switch event.Type {
 	// Prompt execution events
 	case events.EventPromptStarted:
 		data := event.Data.(events.PromptStartedData)
-		if err = f.writeln("▐ 🪄PROMPT"); err != nil {
-			return err
+		output := struct {
+			Type     string `json:"type"`
+			Time     string `json:"time"`
+			Prompt   string `json:"prompt"`
+			Cwd      string `json:"cwd,omitempty"`
+			BaseURL  string `json:"base_url,omitempty"`
+			FileList string `json:"file_list,omitempty"`
+		}{
+			Type:     string(event.Type),
+			Time:     f.formatTime(),
+			Prompt:   data.Prompt,
+			Cwd:      data.Cwd,
+			BaseURL:  data.BaseURL,
+			FileList: data.FileList,
 		}
-		if err = f.writeln("▐ ─────────"); err != nil {
-			return err
-		}
-		displayPrompt := Truncate(data.Prompt, promptMaxLen, truncateSuffix)
-		if err = f.printPrefixed(displayPrompt, "▐ ", displayWidth); err != nil {
-			return err
-		}
-		if err = f.writeln(); err != nil {
-			return err
-		}
-
-		// Display BaseURL if set
-		if data.BaseURL != "" {
-			if err = f.write("🌐 ANTHROPIC_BASE_URL: %s\n", data.BaseURL); err != nil {
-				return err
-			}
-		}
-
-		// Display cwd info
-		if data.Cwd != "" {
-			err = f.write("🚀 Starting(cwd: %s%s)\n", data.Cwd, data.FileList)
-		}
+		jsonBytes, err = json.Marshal(output)
 
 	// Claude streaming events
 	case events.EventClaudeAssistantMessage:
 		data := event.Data.(events.AssistantMessageData)
-		err = f.write("💬 %s\n", data.Text)
+		output := struct {
+			Type string `json:"type"`
+			Time string `json:"time"`
+			Text string `json:"text"`
+		}{
+			Type: string(event.Type),
+			Time: f.formatTime(),
+			Text: data.Text,
+		}
+		jsonBytes, err = json.Marshal(output)
 
 	case events.EventClaudeToolUse:
 		data := event.Data.(events.ToolUseData)
-		if err = f.write("🔧 %s%s%s", Bold, data.Name, Reset); err != nil {
-			return err
+		output := struct {
+			Type  string                 `json:"type"`
+			Time  string                 `json:"time"`
+			Name  string                 `json:"name"`
+			Input map[string]interface{} `json:"input"`
+		}{
+			Type:  string(event.Type),
+			Time:  f.formatTime(),
+			Name:  data.Name,
+			Input: data.Input,
 		}
-		if len(data.Input) > 0 {
-			if err = f.writeln(); err != nil {
-				return err
-			}
-			err = f.formatToolInputs(data.Input)
-		} else {
-			err = f.writeln()
-		}
+		jsonBytes, err = json.Marshal(output)
 
 	case events.EventClaudeToolResult:
 		data := event.Data.(events.ToolResultData)
-		if data.Content != "" {
-			result := f.truncateResult(data.Content, maxResultDisplay)
-			err = f.write("✅ %sResult%s: %s\n", Green, Reset, result)
+		output := struct {
+			Type    string `json:"type"`
+			Time    string `json:"time"`
+			Content string `json:"content"`
+		}{
+			Type:    string(event.Type),
+			Time:    f.formatTime(),
+			Content: data.Content,
 		}
+		jsonBytes, err = json.Marshal(output)
 
 	case events.EventClaudeExecutionResult:
 		data := event.Data.(events.ExecutionResultData)
-		durationSec := data.Duration.Seconds()
-		err = f.write("⏱️ Duration: %.2fs\n", durationSec)
+		output := struct {
+			Type        string  `json:"type"`
+			Time        string  `json:"time"`
+			DurationSec float64 `json:"duration_sec"`
+		}{
+			Type:        string(event.Type),
+			Time:        f.formatTime(),
+			DurationSec: data.Duration.Seconds(),
+		}
+		jsonBytes, err = json.Marshal(output)
 
 	// Loop execution events
 	case events.EventLoopStarted:
-		// No output for this event
+		data := event.Data.(events.LoopStartedData)
+		output := struct {
+			Type            string `json:"type"`
+			Time            string `json:"time"`
+			TotalIterations int    `json:"total_iterations"`
+		}{
+			Type:            string(event.Type),
+			Time:            f.formatTime(),
+			TotalIterations: data.TotalIterations,
+		}
+		jsonBytes, err = json.Marshal(output)
 
 	case events.EventIterationStarted:
 		data := event.Data.(events.IterationStartedData)
-		if err = f.writeln("========================================="); err != nil {
-			return err
+		output := struct {
+			Type    string `json:"type"`
+			Time    string `json:"time"`
+			Current int    `json:"current"`
+			Total   int    `json:"total"`
+		}{
+			Type:    string(event.Type),
+			Time:    f.formatTime(),
+			Current: data.Current,
+			Total:   data.Total,
 		}
-		if err = f.write("Starting iteration %d of %d\n", data.Current, data.Total); err != nil {
-			return err
-		}
-		err = f.writeln("=========================================")
+		jsonBytes, err = json.Marshal(output)
 
 	case events.EventIterationCompleted:
 		data := event.Data.(events.IterationCompletedData)
-		err = f.write("✅ Iteration %d completed successfully\n", data.Current)
+		output := struct {
+			Type        string  `json:"type"`
+			Time        string  `json:"time"`
+			Current     int     `json:"current"`
+			Total       int     `json:"total"`
+			DurationSec float64 `json:"duration_sec"`
+		}{
+			Type:        string(event.Type),
+			Time:        f.formatTime(),
+			Current:     data.Current,
+			Total:       data.Total,
+			DurationSec: data.Duration.Seconds(),
+		}
+		jsonBytes, err = json.Marshal(output)
 
 	case events.EventIterationFailed:
 		data := event.Data.(events.IterationFailedData)
-		if err = f.write("❌ Prompt failed: %v\n", data.Error); err != nil {
-			return err
+		output := struct {
+			Type    string `json:"type"`
+			Time    string `json:"time"`
+			Current int    `json:"current"`
+			Total   int    `json:"total"`
+			Error   string `json:"error"`
+		}{
+			Type:    string(event.Type),
+			Time:    f.formatTime(),
+			Current: data.Current,
+			Total:   data.Total,
+			Error:   data.Error.Error(),
 		}
-		err = f.write("❌ Iteration %d failed\n", data.Current)
+		jsonBytes, err = json.Marshal(output)
 
 	case events.EventSleepStarted:
 		data := event.Data.(events.SleepStartedData)
-		err = f.write("💤 Sleeping for %s...\n", data.Duration)
+		output := struct {
+			Type     string `json:"type"`
+			Time     string `json:"time"`
+			Duration string `json:"duration"`
+		}{
+			Type:     string(event.Type),
+			Time:     f.formatTime(),
+			Duration: data.Duration.String(),
+		}
+		jsonBytes, err = json.Marshal(output)
 
 	case events.EventLoopCompleted:
 		data := event.Data.(events.LoopCompletedData)
-		if data.FailedIterations == 0 {
-			err = f.write("🎉 All %d iterations succeeded.\n", data.TotalIterations)
-		} else {
-			err = f.write("⚠️ %d of %d iterations failed.\n", data.FailedIterations, data.TotalIterations)
+		output := struct {
+			Type            string  `json:"type"`
+			Time            string  `json:"time"`
+			TotalIterations int     `json:"total_iterations"`
+			Successful      int     `json:"successful"`
+			Failed          int     `json:"failed"`
+			DurationSec     float64 `json:"duration_sec"`
+		}{
+			Type:            string(event.Type),
+			Time:            f.formatTime(),
+			TotalIterations: data.TotalIterations,
+			Successful:      data.SuccessfulIterations,
+			Failed:          data.FailedIterations,
+			DurationSec:     data.TotalDuration.Seconds(),
 		}
+		jsonBytes, err = json.Marshal(output)
 
 	case events.EventLoopInterrupted:
-		err = f.writeln("\n\n⚠️ Stopping all iterations...")
+		data := event.Data.(events.LoopInterruptedData)
+		output := struct {
+			Type      string `json:"type"`
+			Time      string `json:"time"`
+			Completed int    `json:"completed"`
+			Total     int    `json:"total"`
+		}{
+			Type:      string(event.Type),
+			Time:      f.formatTime(),
+			Completed: data.CompletedIterations,
+			Total:     data.TotalIterations,
+		}
+		jsonBytes, err = json.Marshal(output)
 
 	// Evolution events
 	case events.EventEvolveStarted:
 		data := event.Data.(events.EvolveStartedData)
-		if err = f.writeln("========================================="); err != nil {
-			return err
+		output := struct {
+			Type       string `json:"type"`
+			Time       string `json:"time"`
+			Prompt     string `json:"prompt"`
+			Iterations int    `json:"iterations"`
+		}{
+			Type:       string(event.Type),
+			Time:       f.formatTime(),
+			Prompt:     data.Prompt,
+			Iterations: data.Iterations,
 		}
-		if err = f.writeln("🧬 Starting Evolution"); err != nil {
-			return err
-		}
-		if err = f.write("Iterations: %d\n", data.Iterations); err != nil {
-			return err
-		}
-		if err = f.writeln("========================================="); err != nil {
-			return err
-		}
-		err = f.writeln()
-
-	case events.EventGitBranchCreated:
-		data := event.Data.(events.BranchCreatedData)
-		if data.Base == "" {
-			// Initial branch
-			err = f.write("🌱 Creating initial branch: %s\n", data.BranchName)
-		} else {
-			// Improvement branch
-			err = f.write("🌿 Creating improvement branch: %s (from %s)\n", data.BranchName, data.Base)
-		}
-
-	case events.EventGitBranchCheckedOut:
-		// No output for this event
-
-	case events.EventGitBranchDeleted:
-		data := event.Data.(events.BranchDeletedData)
-		err = f.write("🗑️ Deleting loser branch: %s\n", data.BranchName)
-
-	case events.EventGitCommitsSquashed:
-		data := event.Data.(events.CommitsSquashedData)
-		err = f.write("📦 Squashing commits on %s\n", data.BranchName)
+		jsonBytes, err = json.Marshal(output)
 
 	case events.EventRoundStarted:
 		data := event.Data.(events.RoundStartedData)
-		if err = f.writeln(); err != nil {
-			return err
+		output := struct {
+			Type  string `json:"type"`
+			Time  string `json:"time"`
+			Round int    `json:"round"`
+			Total int    `json:"total"`
+		}{
+			Type:  string(event.Type),
+			Time:  f.formatTime(),
+			Round: data.Round,
+			Total: data.Total,
 		}
-		if err = f.writeln("========================================="); err != nil {
-			return err
-		}
-		if err = f.write("🔄 Evolution Round %d of %d\n", data.Round, data.Total); err != nil {
-			return err
-		}
-		if err = f.writeln("========================================="); err != nil {
-			return err
-		}
-		err = f.writeln()
+		jsonBytes, err = json.Marshal(output)
 
 	case events.EventImprovementStarted:
-		if err = f.writeln(); err != nil {
-			return err
+		data := event.Data.(events.ImprovementStartedData)
+		output := struct {
+			Type   string `json:"type"`
+			Time   string `json:"time"`
+			Branch string `json:"branch"`
+		}{
+			Type:   string(event.Type),
+			Time:   f.formatTime(),
+			Branch: data.BranchName,
 		}
-		if err = f.writeln("✨ Improving code..."); err != nil {
-			return err
-		}
-		err = f.writeln()
+		jsonBytes, err = json.Marshal(output)
 
 	case events.EventComparisonStarted:
 		data := event.Data.(events.ComparisonStartedData)
-		if err = f.writeln(); err != nil {
-			return err
+		output := struct {
+			Type    string `json:"type"`
+			Time    string `json:"time"`
+			Branch1 string `json:"branch1"`
+			Branch2 string `json:"branch2"`
+		}{
+			Type:    string(event.Type),
+			Time:    f.formatTime(),
+			Branch1: data.Branch1,
+			Branch2: data.Branch2,
 		}
-		if err = f.writeln("⚖️ Comparing implementations..."); err != nil {
-			return err
-		}
-		if err = f.write("Branch 1: %s\n", data.Branch1); err != nil {
-			return err
-		}
-		if err = f.write("Branch 2: %s\n", data.Branch2); err != nil {
-			return err
-		}
-		err = f.writeln()
+		jsonBytes, err = json.Marshal(output)
 
 	case events.EventComparisonRetry:
 		data := event.Data.(events.ComparisonRetryData)
-		err = f.write("⚠️ Retry attempt %d/%d for comparison...\n", data.Attempt, data.MaxAttempts)
+		output := struct {
+			Type        string `json:"type"`
+			Time        string `json:"time"`
+			Attempt     int    `json:"attempt"`
+			MaxAttempts int    `json:"max_attempts"`
+		}{
+			Type:        string(event.Type),
+			Time:        f.formatTime(),
+			Attempt:     data.Attempt,
+			MaxAttempts: data.MaxAttempts,
+		}
+		jsonBytes, err = json.Marshal(output)
 
 	case events.EventWinnerSelected:
 		data := event.Data.(events.WinnerSelectedData)
-		err = f.write("🏆 Winner: %s\n", data.Winner)
+		output := struct {
+			Type   string `json:"type"`
+			Time   string `json:"time"`
+			Winner string `json:"winner"`
+			Loser  string `json:"loser"`
+		}{
+			Type:   string(event.Type),
+			Time:   f.formatTime(),
+			Winner: data.Winner,
+			Loser:  data.Loser,
+		}
+		jsonBytes, err = json.Marshal(output)
 
 	case events.EventEvolveCompleted:
 		data := event.Data.(events.EvolveCompletedData)
-		if err = f.writeln(); err != nil {
-			return err
+		output := struct {
+			Type        string  `json:"type"`
+			Time        string  `json:"time"`
+			FinalBranch string  `json:"final_branch"`
+			TotalRounds int     `json:"total_rounds"`
+			DurationSec float64 `json:"duration_sec"`
+		}{
+			Type:        string(event.Type),
+			Time:        f.formatTime(),
+			FinalBranch: data.FinalBranch,
+			TotalRounds: data.TotalRounds,
+			DurationSec: data.TotalDuration.Seconds(),
 		}
-		if err = f.writeln("========================================="); err != nil {
-			return err
-		}
-		if err = f.write("🎉 Evolution complete! Final winner: %s\n", data.FinalBranch); err != nil {
-			return err
-		}
-		err = f.writeln("=========================================")
+		jsonBytes, err = json.Marshal(output)
 
 	case events.EventEvolveInterrupted:
 		data := event.Data.(events.EvolveInterruptedData)
-		err = f.write("\n\n⚠️ Interrupted. Completed %d of %d rounds. Current winner: %s\n",
-			data.CompletedRounds, data.TotalRounds, data.Winner)
+		output := struct {
+			Type            string `json:"type"`
+			Time            string `json:"time"`
+			CompletedRounds int    `json:"completed_rounds"`
+			TotalRounds     int    `json:"total_rounds"`
+			Winner          string `json:"winner"`
+		}{
+			Type:            string(event.Type),
+			Time:            f.formatTime(),
+			CompletedRounds: data.CompletedRounds,
+			TotalRounds:     data.TotalRounds,
+			Winner:          data.Winner,
+		}
+		jsonBytes, err = json.Marshal(output)
+
+	// Git operations
+	case events.EventGitBranchCreated:
+		data := event.Data.(events.BranchCreatedData)
+		output := struct {
+			Type   string `json:"type"`
+			Time   string `json:"time"`
+			Branch string `json:"branch"`
+			Base   string `json:"base,omitempty"`
+		}{
+			Type:   string(event.Type),
+			Time:   f.formatTime(),
+			Branch: data.BranchName,
+			Base:   data.Base,
+		}
+		jsonBytes, err = json.Marshal(output)
+
+	case events.EventGitBranchCheckedOut:
+		data := event.Data.(events.BranchCheckedOutData)
+		output := struct {
+			Type   string `json:"type"`
+			Time   string `json:"time"`
+			Branch string `json:"branch"`
+		}{
+			Type:   string(event.Type),
+			Time:   f.formatTime(),
+			Branch: data.BranchName,
+		}
+		jsonBytes, err = json.Marshal(output)
+
+	case events.EventGitBranchDeleted:
+		data := event.Data.(events.BranchDeletedData)
+		output := struct {
+			Type   string `json:"type"`
+			Time   string `json:"time"`
+			Branch string `json:"branch"`
+		}{
+			Type:   string(event.Type),
+			Time:   f.formatTime(),
+			Branch: data.BranchName,
+		}
+		jsonBytes, err = json.Marshal(output)
+
+	case events.EventGitCommitsSquashed:
+		data := event.Data.(events.CommitsSquashedData)
+		output := struct {
+			Type   string `json:"type"`
+			Time   string `json:"time"`
+			Branch string `json:"branch"`
+		}{
+			Type:   string(event.Type),
+			Time:   f.formatTime(),
+			Branch: data.BranchName,
+		}
+		jsonBytes, err = json.Marshal(output)
+
+	default:
+		return fmt.Errorf("unknown event type: %s", event.Type)
 	}
 
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to marshal JSON: %w", err)
+	}
+
+	// Get color for event type and write colored JSON line
+	color := f.getColorForEventType(event.Type)
+	_, err = fmt.Fprintf(f.writer, "%s%s%s\n", color, string(jsonBytes), Reset)
+	if err != nil {
+		return fmt.Errorf("failed to write to console: %w", err)
+	}
+
+	return nil
 }
 
 // Flush ensures all buffered output is written
-func (f *ConsoleFormatter) Flush() error {
+func (f *JSONFormatter) Flush() error {
 	return nil
 }
 
-// formatToolInputs formats and prints tool inputs with proper alignment
-func (f *ConsoleFormatter) formatToolInputs(inputs map[string]interface{}) error {
-	keys := make([]string, 0, len(inputs))
-	for k := range inputs {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-
-	for _, key := range keys {
-		value := inputs[key]
-		valueStr := fmt.Sprintf("%v", value)
-		if len(valueStr) > 100 {
-			valueStr = valueStr[:100] + "..."
-		}
-		if err := f.write("     %s%s%s: %s\n", Cyan, key, Reset, valueStr); err != nil {
-			return err
-		}
-	}
-	return nil
+// formatTime returns current time in HH:MM:SS format
+func (f *JSONFormatter) formatTime() string {
+	return time.Now().Format("15:04:05")
 }
 
-// truncateResult truncates a result string to maxLen if needed
-func (f *ConsoleFormatter) truncateResult(result string, maxLen int) string {
-	if len(result) > maxLen {
-		return result[:maxLen] + "..."
-	}
-	return result
-}
+// getColorForEventType returns the ANSI color code for an event type
+func (f *JSONFormatter) getColorForEventType(eventType events.EventType) string {
+	switch eventType {
+	// Priority 1 - Bold Cyan (ANTHROPIC_BASE_URL)
+	case events.EventPromptStarted:
+		return BoldCyan
 
-// printPrefixed prints text with left bar prefix, handles line wrapping
-func (f *ConsoleFormatter) printPrefixed(text string, prefix string, totalWidth int) error {
-	prefixLen := len(prefix)
-	contentWidth := totalWidth - prefixLen
-	if contentWidth < 1 {
-		contentWidth = 1
-	}
+	// Priority 2 - Bold Yellow (Phase Markers)
+	case events.EventLoopStarted,
+		events.EventIterationStarted,
+		events.EventEvolveStarted,
+		events.EventRoundStarted,
+		events.EventImprovementStarted,
+		events.EventComparisonStarted,
+		events.EventSleepStarted:
+		return BoldYellow
 
-	wrapped := Wrap(text, contentWidth)
-	lines := strings.Split(wrapped, "\n")
-	for _, line := range lines {
-		if err := f.writeln(prefix + line); err != nil {
-			return err
-		}
+	// Priority 3 - Bold Green (Success Results)
+	case events.EventClaudeExecutionResult,
+		events.EventLoopCompleted,
+		events.EventEvolveCompleted,
+		events.EventIterationCompleted,
+		events.EventWinnerSelected:
+		return BoldGreen
+
+	// Priority 4 - Bold Red (Errors/Interruptions)
+	case events.EventIterationFailed,
+		events.EventLoopInterrupted,
+		events.EventEvolveInterrupted:
+		return BoldRed
+
+	// Priority 5 - Magenta (Tool Operations)
+	case events.EventClaudeToolUse,
+		events.EventClaudeToolResult:
+		return Magenta
+
+	// Priority 6 - Cyan (Git Operations)
+	case events.EventGitBranchCreated,
+		events.EventGitBranchCheckedOut,
+		events.EventGitBranchDeleted,
+		events.EventGitCommitsSquashed:
+		return Cyan
+
+	// Priority 7 - White/No Color (Regular Messages)
+	case events.EventClaudeAssistantMessage,
+		events.EventComparisonRetry:
+		return ""
+
+	default:
+		return ""
 	}
-	return nil
 }

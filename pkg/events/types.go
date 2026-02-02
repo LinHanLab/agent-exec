@@ -16,20 +16,19 @@ const (
 	EventClaudeToolResult       EventType = "claude_tool_result"
 	EventClaudeExecutionResult  EventType = "claude_execution_result"
 
-	// Loop execution events
-	EventLoopStarted        EventType = "loop_started"
-	EventIterationStarted   EventType = "iteration_started"
-	EventIterationCompleted EventType = "iteration_completed"
-	EventIterationFailed    EventType = "iteration_failed"
-	EventSleepStarted       EventType = "sleep_started"
-	EventLoopCompleted      EventType = "loop_completed"
-	EventLoopInterrupted    EventType = "loop_interrupted"
-
 	// Git operation events
 	EventGitBranchCreated    EventType = "git_branch_created"
 	EventGitBranchCheckedOut EventType = "git_branch_checked_out"
 	EventGitBranchDeleted    EventType = "git_branch_deleted"
 	EventGitCommitsSquashed  EventType = "git_commits_squashed"
+
+	// Loop execution events
+	EventLoopStarted        EventType = "loop_started"
+	EventIterationStarted   EventType = "iteration_started"
+	EventIterationCompleted EventType = "iteration_completed"
+	EventIterationFailed    EventType = "iteration_failed"
+	EventLoopCompleted      EventType = "loop_completed"
+	EventLoopInterrupted    EventType = "loop_interrupted"
 
 	// Evolution workflow events
 	EventEvolveStarted      EventType = "evolve_started"
@@ -40,6 +39,8 @@ const (
 	EventWinnerSelected     EventType = "winner_selected"
 	EventEvolveCompleted    EventType = "evolve_completed"
 	EventEvolveInterrupted  EventType = "evolve_interrupted"
+
+	EventSleepStarted EventType = "sleep_started"
 )
 
 // Event represents a single event in the system
