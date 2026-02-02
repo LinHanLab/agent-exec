@@ -48,16 +48,26 @@ func NewConsoleFormatter(writer io.Writer, verbose bool) *JSONFormatter {
 	}
 }
 
-// formatBigTitle wraps title with ==== lines and empty lines
-func (f *JSONFormatter) formatBigTitle(title string) string {
+// formatBigTitle wraps title with ==== lines and applies reverse video
+func (f *JSONFormatter) formatBigTitle(title string, color string) string {
 	separator := strings.Repeat("=", len(title))
-	return fmt.Sprintf("\n%s\n%s\n%s\n", separator, title, separator)
+
+	// Apply reverse video to separator and title
+	highlightedSeparator := f.applyReverseVideo(separator, color)
+	highlightedTitle := f.applyReverseVideo(title, color)
+
+	return fmt.Sprintf("\n%s\n%s\n%s\n", highlightedSeparator, highlightedTitle, highlightedSeparator)
 }
 
-// formatSmallTitle wraps title with --- lines
-func (f *JSONFormatter) formatSmallTitle(title string) string {
+// formatSmallTitle wraps title with --- lines and applies reverse video
+func (f *JSONFormatter) formatSmallTitle(title string, color string) string {
 	separator := strings.Repeat("-", len(title))
-	return fmt.Sprintf("%s\n%s\n%s", separator, title, separator)
+
+	// Apply reverse video to separator and title
+	highlightedSeparator := f.applyReverseVideo(separator, color)
+	highlightedTitle := f.applyReverseVideo(title, color)
+
+	return fmt.Sprintf("%s\n%s\n%s", highlightedSeparator, highlightedTitle, highlightedSeparator)
 }
 
 // formatCodeBlock wraps content in ``` with optional language
@@ -142,6 +152,29 @@ func (f *JSONFormatter) limitCodeBlock(content string) string {
 	return result
 }
 
+// applyReverseVideo wraps text with reverse video effect
+// The color parameter should be the existing color code (e.g., BoldYellow)
+func (f *JSONFormatter) applyReverseVideo(text string, color string) string {
+	if color == "" {
+		return fmt.Sprintf("%s%s%s", ReverseVideo, text, Reset)
+	}
+	return fmt.Sprintf("%s%s%s%s", color, ReverseVideo, text, Reset)
+}
+
+// indentContent adds 4-space prefix to each line of content
+func (f *JSONFormatter) indentContent(content string) string {
+	if content == "" {
+		return content
+	}
+
+	lines := strings.Split(content, "\n")
+	indented := make([]string, len(lines))
+	for i, line := range lines {
+		indented[i] = "    " + line
+	}
+	return strings.Join(indented, "\n")
+}
+
 // Format processes an event and outputs it as human-readable colored text
 func (f *JSONFormatter) Format(event events.Event) error {
 	var output string
@@ -151,27 +184,39 @@ func (f *JSONFormatter) Format(event events.Event) error {
 	// Small title event
 	case events.EventRunPromptStarted:
 		data := event.Data.(events.RunPromptStartedData)
+		color := f.getColorForEventType(event.Type)
 		title := "🚀 Run Prompt Started"
-		output = f.formatSmallTitle(title) + "\n" + f.formatCodeBlock(data.Prompt, "")
 
-		// Add optional metadata
+		// Format title with reverse video
+		formattedTitle := f.formatSmallTitle(title, color)
+
+		// Format and indent code block
+		codeBlock := f.formatCodeBlock(data.Prompt, "")
+		indentedCodeBlock := f.indentContent(codeBlock)
+
+		output = formattedTitle + "\n" + indentedCodeBlock
+
+		// Add optional metadata (indented)
 		if data.BaseURL != "" {
-			output += fmt.Sprintf("\n🌐 Base URL: %s", data.BaseURL)
+			output += "\n" + f.indentContent(fmt.Sprintf("🌐 Base URL: %s", data.BaseURL))
 		}
 		if data.Cwd != "" {
-			output += fmt.Sprintf("\n📁 Working Directory: %s", data.Cwd)
+			output += "\n" + f.indentContent(fmt.Sprintf("📁 Working Directory: %s", data.Cwd))
 		}
 		if data.FileList != "" {
-			output += fmt.Sprintf("\n📄 File List: %s", data.FileList)
+			output += "\n" + f.indentContent(fmt.Sprintf("📄 File List: %s", data.FileList))
 		}
 
 	// Claude streaming events
 	case events.EventClaudeAssistantMessage:
 		data := event.Data.(events.AssistantMessageData)
-		output = fmt.Sprintf("💬 %s%s", timeStr, data.Text)
+		color := f.getColorForEventType(event.Type)
+		message := fmt.Sprintf("💬 %s%s", timeStr, data.Text)
+		output = f.applyReverseVideo(message, color)
 
 	case events.EventClaudeToolUse:
 		data := event.Data.(events.ToolUseData)
+		color := f.getColorForEventType(event.Type)
 
 		// Apply input filtering
 		filteredInput := f.applyToolInputFilters(data.Name, data.Input)
@@ -184,115 +229,185 @@ func (f *JSONFormatter) Format(event events.Event) error {
 		// Apply content limiting
 		limitedJSON := f.limitCodeBlock(prettyJSON)
 
-		output = fmt.Sprintf("🔧 %sTool: %s\n%s", timeStr, data.Name, f.formatCodeBlock(limitedJSON, "json"))
+		// Format title with reverse video
+		title := fmt.Sprintf("🔧 %sTool: %s", timeStr, data.Name)
+		highlightedTitle := f.applyReverseVideo(title, color)
+
+		// Format and indent code block
+		codeBlock := f.formatCodeBlock(limitedJSON, "json")
+		indentedCodeBlock := f.indentContent(codeBlock)
+
+		output = highlightedTitle + "\n" + indentedCodeBlock
 
 	case events.EventClaudeToolResult:
 		data := event.Data.(events.ToolResultData)
+		color := f.getColorForEventType(event.Type)
 		limitedContent := f.limitCodeBlock(data.Content)
-		output = fmt.Sprintf("📋 %sTool Result\n%s", timeStr, f.formatCodeBlock(limitedContent, ""))
+
+		// Format title with reverse video
+		title := fmt.Sprintf("📋 %sTool Result", timeStr)
+		highlightedTitle := f.applyReverseVideo(title, color)
+
+		// Format and indent code block
+		codeBlock := f.formatCodeBlock(limitedContent, "")
+		indentedCodeBlock := f.indentContent(codeBlock)
+
+		output = highlightedTitle + "\n" + indentedCodeBlock
 
 	case events.EventClaudeExecutionResult:
 		data := event.Data.(events.ExecutionResultData)
-		output = fmt.Sprintf("⏱️ Execution completed in %s", f.formatDuration(data.Duration))
+		color := f.getColorForEventType(event.Type)
+		message := fmt.Sprintf("⏱️ Execution completed in %s", f.formatDuration(data.Duration))
+		output = f.applyReverseVideo(message, color)
 
 	// Big title events
 	case events.EventLoopStarted:
 		data := event.Data.(events.LoopStartedData)
+		color := f.getColorForEventType(event.Type)
 		title := "🔄 Loop Started"
-		output = f.formatBigTitle(title) + fmt.Sprintf("\n🔢 Iterations: %d", data.TotalIterations)
+
+		// Format title with reverse video
+		formattedTitle := f.formatBigTitle(title, color)
+
+		// Indent content
+		content := fmt.Sprintf("🔢 Iterations: %d", data.TotalIterations)
+		indentedContent := f.indentContent(content)
+
+		output = formattedTitle + indentedContent
 
 	case events.EventEvolveStarted:
 		data := event.Data.(events.EvolveStartedData)
+		color := f.getColorForEventType(event.Type)
 		title := "🧬 Evolution Started"
-		output = f.formatBigTitle(title) + fmt.Sprintf("\n🔢 Iterations: %d", data.TotalIterations)
+
+		// Format title with reverse video
+		formattedTitle := f.formatBigTitle(title, color)
+
+		// Indent content
+		content := fmt.Sprintf("🔢 Iterations: %d", data.TotalIterations)
+		indentedContent := f.indentContent(content)
+
+		output = formattedTitle + indentedContent
 
 	case events.EventRoundStarted:
 		data := event.Data.(events.RoundStartedData)
+		color := f.getColorForEventType(event.Type)
 		title := fmt.Sprintf("🎯 Round %d/%d", data.Round, data.Total)
-		output = f.formatBigTitle(title)
+		output = f.formatBigTitle(title, color)
 
 	// Loop execution events
 	case events.EventIterationStarted:
 		data := event.Data.(events.IterationStartedData)
-		output = fmt.Sprintf("▶️ %sIteration %d/%d started", timeStr, data.Current, data.Total)
+		color := f.getColorForEventType(event.Type)
+		message := fmt.Sprintf("▶️ %sIteration %d/%d started", timeStr, data.Current, data.Total)
+		output = f.applyReverseVideo(message, color)
 
 	case events.EventIterationCompleted:
 		data := event.Data.(events.IterationCompletedData)
-		output = fmt.Sprintf("✅ %sIteration %d/%d completed in %s", timeStr, data.Current, data.Total, f.formatDuration(data.Duration))
+		color := f.getColorForEventType(event.Type)
+		message := fmt.Sprintf("✅ %sIteration %d/%d completed in %s", timeStr, data.Current, data.Total, f.formatDuration(data.Duration))
+		output = f.applyReverseVideo(message, color)
 
 	case events.EventIterationFailed:
 		data := event.Data.(events.IterationFailedData)
+		color := f.getColorForEventType(event.Type)
 		errMsg := "unknown error"
 		if data.Error != nil {
 			errMsg = data.Error.Error()
 		}
-		output = fmt.Sprintf("❌ %sIteration %d/%d failed: %s", timeStr, data.Current, data.Total, errMsg)
+		message := fmt.Sprintf("❌ %sIteration %d/%d failed: %s", timeStr, data.Current, data.Total, errMsg)
+		output = f.applyReverseVideo(message, color)
 
 	case events.EventLoopCompleted:
 		data := event.Data.(events.LoopCompletedData)
-		output = fmt.Sprintf("🏁 Loop completed: %d/%d successful, %d failed (Total: %s)",
+		color := f.getColorForEventType(event.Type)
+		message := fmt.Sprintf("🏁 Loop completed: %d/%d successful, %d failed (Total: %s)",
 			data.SuccessfulIterations, data.TotalIterations, data.FailedIterations, f.formatDuration(data.TotalDuration))
+		output = f.applyReverseVideo(message, color)
 
 	case events.EventLoopInterrupted:
 		data := event.Data.(events.LoopInterruptedData)
-		output = fmt.Sprintf("⚠️ Loop interrupted: %d/%d iterations completed", data.CompletedIterations, data.TotalIterations)
+		color := f.getColorForEventType(event.Type)
+		message := fmt.Sprintf("⚠️ Loop interrupted: %d/%d iterations completed", data.CompletedIterations, data.TotalIterations)
+		output = f.applyReverseVideo(message, color)
 
 	case events.EventSleepStarted:
 		data := event.Data.(events.SleepStartedData)
-		output = fmt.Sprintf("💤 %sSleeping for %s", timeStr, f.formatDuration(data.Duration))
+		color := f.getColorForEventType(event.Type)
+		message := fmt.Sprintf("💤 %sSleeping for %s", timeStr, f.formatDuration(data.Duration))
+		output = f.applyReverseVideo(message, color)
 
 	// Evolution events
 	case events.EventImprovementStarted:
 		data := event.Data.(events.ImprovementStartedData)
-		output = fmt.Sprintf("🔨 %sImproving branch: %s", timeStr, data.BranchName)
+		color := f.getColorForEventType(event.Type)
+		message := fmt.Sprintf("🔨 %sImproving branch: %s", timeStr, data.BranchName)
+		output = f.applyReverseVideo(message, color)
 
 	case events.EventComparisonStarted:
 		data := event.Data.(events.ComparisonStartedData)
-		output = fmt.Sprintf("⚖️ %sComparing: %s vs %s", timeStr, data.Branch1, data.Branch2)
+		color := f.getColorForEventType(event.Type)
+		message := fmt.Sprintf("⚖️ %sComparing: %s vs %s", timeStr, data.Branch1, data.Branch2)
+		output = f.applyReverseVideo(message, color)
 
 	case events.EventComparisonRetry:
 		data := event.Data.(events.ComparisonRetryData)
-		output = fmt.Sprintf("🔁 %sComparison retry %d/%d", timeStr, data.Attempt, data.MaxAttempts)
+		color := f.getColorForEventType(event.Type)
+		message := fmt.Sprintf("🔁 %sComparison retry %d/%d", timeStr, data.Attempt, data.MaxAttempts)
+		output = f.applyReverseVideo(message, color)
 
 	case events.EventWinnerSelected:
 		data := event.Data.(events.WinnerSelectedData)
-		output = fmt.Sprintf("🏆 %sWinner: %s (eliminated: %s)", timeStr, data.Winner, data.Loser)
+		color := f.getColorForEventType(event.Type)
+		message := fmt.Sprintf("🏆 %sWinner: %s (eliminated: %s)", timeStr, data.Winner, data.Loser)
+		output = f.applyReverseVideo(message, color)
 
 	case events.EventEvolveCompleted:
 		data := event.Data.(events.EvolveCompletedData)
-		output = fmt.Sprintf("🎉 Evolution completed: %s (Total: %s)", data.FinalBranch, f.formatDuration(data.TotalDuration))
+		color := f.getColorForEventType(event.Type)
+		message := fmt.Sprintf("🎉 Evolution completed: %s (Total: %s)", data.FinalBranch, f.formatDuration(data.TotalDuration))
+		output = f.applyReverseVideo(message, color)
 
 	case events.EventEvolveInterrupted:
 		data := event.Data.(events.EvolveInterruptedData)
-		output = fmt.Sprintf("🛑 Evolution interrupted: %d/%d rounds completed", data.CompletedRounds, data.TotalRounds)
+		color := f.getColorForEventType(event.Type)
+		message := fmt.Sprintf("🛑 Evolution interrupted: %d/%d rounds completed", data.CompletedRounds, data.TotalRounds)
+		output = f.applyReverseVideo(message, color)
 
 	// Git operations
 	case events.EventGitBranchCreated:
 		data := event.Data.(events.BranchCreatedData)
-		output = fmt.Sprintf("🌿 %sBranch created: %s", timeStr, data.BranchName)
+		color := f.getColorForEventType(event.Type)
+		message := fmt.Sprintf("🌿 %sBranch created: %s", timeStr, data.BranchName)
 		if data.Base != "" {
-			output += fmt.Sprintf(" (from %s)", data.Base)
+			message += fmt.Sprintf(" (from %s)", data.Base)
 		}
+		output = f.applyReverseVideo(message, color)
 
 	case events.EventGitBranchCheckedOut:
 		data := event.Data.(events.BranchCheckedOutData)
-		output = fmt.Sprintf("🔀 %sChecked out branch: %s", timeStr, data.BranchName)
+		color := f.getColorForEventType(event.Type)
+		message := fmt.Sprintf("🔀 %sChecked out branch: %s", timeStr, data.BranchName)
+		output = f.applyReverseVideo(message, color)
 
 	case events.EventGitBranchDeleted:
 		data := event.Data.(events.BranchDeletedData)
-		output = fmt.Sprintf("🗑️ %sBranch deleted: %s", timeStr, data.BranchName)
+		color := f.getColorForEventType(event.Type)
+		message := fmt.Sprintf("🗑️ %sBranch deleted: %s", timeStr, data.BranchName)
+		output = f.applyReverseVideo(message, color)
 
 	case events.EventGitCommitsSquashed:
 		data := event.Data.(events.CommitsSquashedData)
-		output = fmt.Sprintf("📦 %sCommits squashed on branch: %s", timeStr, data.BranchName)
+		color := f.getColorForEventType(event.Type)
+		message := fmt.Sprintf("📦 %sCommits squashed on branch: %s", timeStr, data.BranchName)
+		output = f.applyReverseVideo(message, color)
 
 	default:
 		return fmt.Errorf("unknown event type: %s", event.Type)
 	}
 
-	// Get color for event type and write colored output
-	color := f.getColorForEventType(event.Type)
-	_, err := fmt.Fprintf(f.writer, "%s%s%s\n\n", color, output, Reset)
+	// Write output (color already applied within each case)
+	_, err := fmt.Fprintf(f.writer, "%s\n", output)
 	if err != nil {
 		return fmt.Errorf("failed to write to console: %w", err)
 	}
