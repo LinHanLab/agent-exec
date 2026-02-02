@@ -50,8 +50,7 @@ func Evolve(cfg EvolveConfig, emitter events.Emitter) error {
 	}
 
 	emitter.Emit(events.EventEvolveStarted, events.EvolveStartedData{
-		Prompt:     cfg.Plan,
-		Iterations: cfg.Iterations,
+		TotalIterations: cfg.Iterations,
 	})
 
 	// Check for interrupt

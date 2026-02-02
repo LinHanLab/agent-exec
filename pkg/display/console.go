@@ -73,7 +73,7 @@ func (f *JSONFormatter) Format(event events.Event) error {
 	// Small title event
 	case events.EventRunPromptStarted:
 		data := event.Data.(events.RunPromptStartedData)
-		title := "🚀 Prompt Started"
+		title := "🚀 Run Prompt Started"
 		output = f.formatSmallTitle(title) + "\n" + f.formatCodeBlock(data.Prompt, "")
 
 		// Add optional metadata
@@ -112,12 +112,12 @@ func (f *JSONFormatter) Format(event events.Event) error {
 	case events.EventLoopStarted:
 		data := event.Data.(events.LoopStartedData)
 		title := "🔄 Loop Started"
-		output = f.formatBigTitle(title) + fmt.Sprintf("\n🔢 Total iterations: %d", data.TotalIterations)
+		output = f.formatBigTitle(title) + fmt.Sprintf("\n🔢 Iterations: %d", data.TotalIterations)
 
 	case events.EventEvolveStarted:
 		data := event.Data.(events.EvolveStartedData)
 		title := "🧬 Evolution Started"
-		output = f.formatBigTitle(title) + fmt.Sprintf("\n📝 Prompt: %s\n🔢 Iterations: %d", data.Prompt, data.Iterations)
+		output = f.formatBigTitle(title) + fmt.Sprintf("\n🔢 Iterations: %d", data.TotalIterations)
 
 	case events.EventRoundStarted:
 		data := event.Data.(events.RoundStartedData)

@@ -129,8 +129,7 @@ func TestConsoleFormatter_EvolveStarted(t *testing.T) {
 	event := events.Event{
 		Type: events.EventEvolveStarted,
 		Data: events.EvolveStartedData{
-			Prompt:     "test evolution",
-			Iterations: 3,
+			TotalIterations: 3,
 		},
 	}
 
@@ -150,11 +149,6 @@ func TestConsoleFormatter_EvolveStarted(t *testing.T) {
 	// Verify big title formatting with equals
 	if !strings.Contains(stripped, "===") {
 		t.Error("Expected output to contain === separator for big title")
-	}
-
-	// Verify prompt content
-	if !strings.Contains(stripped, "test evolution") {
-		t.Error("Expected output to contain prompt text")
 	}
 
 	// Verify iterations

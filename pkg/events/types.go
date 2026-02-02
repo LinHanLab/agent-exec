@@ -125,8 +125,7 @@ type LoopInterruptedData struct {
 
 // EvolveStartedData contains data for EventEvolveStarted
 type EvolveStartedData struct {
-	Prompt     string
-	Iterations int
+	TotalIterations int
 }
 
 // BranchCreatedData contains data for EventBranchCreated
