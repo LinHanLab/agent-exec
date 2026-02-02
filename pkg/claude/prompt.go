@@ -9,13 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/LinHanLab/agent-exec/pkg/format"
-)
-
-const (
-	DisplayWidth   = 76
-	PromptMaxLen   = 270
-	TruncateSuffix = "[...Truncated]"
+	"github.com/LinHanLab/agent-exec/pkg/events"
 )
 
 // PromptOptions holds optional configuration for running prompts
@@ -39,18 +33,22 @@ func (opts *PromptOptions) BuildClaudeArgs(prompt string) []string {
 }
 
 // getCwdInfo retrieves current working directory and file list with error handling
-func getCwdInfo() (cwd, fileList string) {
+func getCwdInfo(emitter events.Emitter) (cwd, fileList string) {
 	var err error
 	cwd, err = os.Getwd()
 	if err != nil {
-		fmt.Printf("⚠️ Warning: failed to get working directory: %v\n", err)
+		emitter.Emit(events.EventPromptValidationWarning, events.PromptValidationWarningData{
+			Message: fmt.Sprintf("failed to get working directory: %v", err),
+		})
 		cwd = "unknown"
 		return
 	}
 
 	files, err := os.ReadDir(cwd)
 	if err != nil {
-		fmt.Printf("⚠️ Warning: failed to read directory: %v\n", err)
+		emitter.Emit(events.EventPromptValidationWarning, events.PromptValidationWarningData{
+			Message: fmt.Sprintf("failed to read directory: %v", err),
+		})
 		return
 	}
 
@@ -64,27 +62,25 @@ func getCwdInfo() (cwd, fileList string) {
 }
 
 // RunPrompt executes a single prompt with claude CLI and returns the final result text
-func RunPrompt(prompt string, opts *PromptOptions) (string, error) {
+func RunPrompt(prompt string, opts *PromptOptions, emitter events.Emitter) (string, error) {
 	if err := ValidatePrompt(prompt); err != nil {
-		return "", fmt.Errorf("validation error: %w", err)
+		return "", err
 	}
 
-	fmt.Println("▐ 🪄PROMPT")
-	fmt.Println("▐ ─────────")
-
-	displayPrompt := format.Truncate(prompt, PromptMaxLen, TruncateSuffix)
-	format.PrintPrefixed(displayPrompt, "▐ ", DisplayWidth)
-
-	fmt.Println()
+	emitter.Emit(events.EventPromptStarted, events.PromptStartedData{
+		Prompt: prompt,
+	})
 
 	if baseURL := os.Getenv("ANTHROPIC_BASE_URL"); baseURL != "" {
-		fmt.Printf("🌐 ANTHROPIC_BASE_URL: %s\n", baseURL)
-		fmt.Println()
+		emitter.Emit(events.EventPromptEnvironmentInfo, events.PromptEnvironmentInfoData{
+			Message: fmt.Sprintf("ANTHROPIC_BASE_URL: %s\n", baseURL),
+		})
 	}
 
-	cwd, fileList := getCwdInfo()
-	fmt.Printf("🚀 Starting(cwd: %s%s)\n", cwd, fileList)
-	fmt.Println()
+	cwd, fileList := getCwdInfo(emitter)
+	emitter.Emit(events.EventPromptEnvironmentInfo, events.PromptEnvironmentInfoData{
+		Message: fmt.Sprintf("Starting(cwd: %s%s)\n", cwd, fileList),
+	})
 
 	if opts == nil {
 		opts = &PromptOptions{}
@@ -102,10 +98,10 @@ func RunPrompt(prompt string, opts *PromptOptions) (string, error) {
 		return "", fmt.Errorf("failed to start claude CLI: %w", err)
 	}
 
-	result, parseErr := ParseStreamJSON(stdout, os.Stdout)
+	result, parseErr := ParseStreamJSON(stdout, emitter)
 	if parseErr != nil {
 		_ = cmd.Wait()
-		return "", fmt.Errorf("failed to parse output: %w", parseErr)
+		return "", parseErr
 	}
 
 	if err := cmd.Wait(); err != nil {
@@ -116,9 +112,9 @@ func RunPrompt(prompt string, opts *PromptOptions) (string, error) {
 }
 
 // RunPromptLoop executes a prompt in iterations with configurable sleep
-func RunPromptLoop(iterations int, sleep time.Duration, prompt string, opts *PromptOptions) error {
+func RunPromptLoop(iterations int, sleep time.Duration, prompt string, opts *PromptOptions, emitter events.Emitter) error {
 	if err := ValidateLoopArgs(iterations, prompt); err != nil {
-		return fmt.Errorf("validation error: %w", err)
+		return err
 	}
 
 	failedIterations := 0
@@ -132,53 +128,74 @@ func RunPromptLoop(iterations int, sleep time.Duration, prompt string, opts *Pro
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	defer signal.Stop(sigChan)
 
+	emitter.Emit(events.EventLoopStarted, events.LoopStartedData{
+		TotalIterations: iterations,
+	})
+
 	// Run the iteration loop
 	for i := 1; i <= iterations; i++ {
 		// Check for interrupt before starting iteration
 		select {
 		case <-sigChan:
-			fmt.Println("\n\n⚠️  Stopping all iterations...")
+			emitter.Emit(events.EventLoopInterrupted, events.LoopInterruptedData{
+				CompletedIterations: i - 1,
+				TotalIterations:     iterations,
+			})
 			return fmt.Errorf("interrupted")
 		default:
 		}
 
-		fmt.Println("=========================================")
-		fmt.Printf("Starting iteration %d of %d\n", i, iterations)
-		fmt.Println("=========================================")
+		emitter.Emit(events.EventIterationStarted, events.IterationStartedData{
+			Current: i,
+			Total:   iterations,
+		})
 
 		// Execute prompt
-		if _, err := RunPrompt(prompt, opts); err != nil {
-			fmt.Printf("❌ Prompt failed: %v\n", err)
-			fmt.Printf("❌ Iteration %d failed\n", i)
+		startTime := time.Now()
+		if _, err := RunPrompt(prompt, opts, emitter); err != nil {
+			emitter.Emit(events.EventIterationFailed, events.IterationFailedData{
+				Current: i,
+				Total:   iterations,
+				Error:   err,
+			})
 			failedIterations++
 		} else {
-			fmt.Printf("✅ Iteration %d completed successfully\n", i)
+			duration := time.Since(startTime)
+			emitter.Emit(events.EventIterationCompleted, events.IterationCompletedData{
+				Current:  i,
+				Total:    iterations,
+				Duration: duration,
+			})
 		}
 
 		// Sleep between iterations (skip sleep after last iteration)
 		if i < iterations && sleep > 0 {
-			fmt.Printf("💤 Sleeping for %s...\n", sleep)
+			emitter.Emit(events.EventSleepStarted, events.SleepStartedData{
+				Duration: sleep,
+			})
 
 			// Interruptible sleep
 			timer := time.NewTimer(sleep)
 			select {
 			case <-sigChan:
 				timer.Stop()
-				fmt.Println("\n\n⚠️  Stopping all iterations...")
+				emitter.Emit(events.EventLoopInterrupted, events.LoopInterruptedData{
+					CompletedIterations: i,
+					TotalIterations:     iterations,
+				})
 				return fmt.Errorf("interrupted")
 			case <-timer.C:
 			}
 		}
-
-		fmt.Println()
 	}
 
 	// Print completion summary
-	if failedIterations == 0 {
-		fmt.Printf("🎉 All %d iterations succeeded.\n", iterations)
-	} else {
-		fmt.Printf("⚠️  %d of %d iterations failed.\n", failedIterations, iterations)
-	}
+	emitter.Emit(events.EventLoopCompleted, events.LoopCompletedData{
+		TotalIterations:      iterations,
+		SuccessfulIterations: iterations - failedIterations,
+		FailedIterations:     failedIterations,
+		TotalDuration:        0, // Not tracking total duration for now
+	})
 
 	return nil
 }

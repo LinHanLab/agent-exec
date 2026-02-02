@@ -1,4 +1,4 @@
-package format
+package display
 
 // ANSI color codes
 const (

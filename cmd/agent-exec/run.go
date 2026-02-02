@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/LinHanLab/agent-exec/pkg/claude"
+	"github.com/LinHanLab/agent-exec/pkg/display"
+	"github.com/LinHanLab/agent-exec/pkg/events"
 	"github.com/spf13/cobra"
 )
 
@@ -34,12 +36,22 @@ Examples:
 			AppendSystemPrompt: appendSystemPrompt,
 		}
 
+		// Create emitter and display
+		emitter := events.NewChannelEmitter(100)
+		formatter := display.NewConsoleFormatter(os.Stdout)
+		disp := display.NewDisplay(formatter, emitter)
+		disp.Start()
+
 		var err error
 		if iterations == 1 {
-			_, err = claude.RunPrompt(prompt, opts)
+			_, err = claude.RunPrompt(prompt, opts, emitter)
 		} else {
-			err = claude.RunPromptLoop(iterations, sleep, prompt, opts)
+			err = claude.RunPromptLoop(iterations, sleep, prompt, opts, emitter)
 		}
+
+		// Close emitter and wait for display to finish
+		emitter.Close()
+		disp.Wait()
 
 		if err != nil {
 			if err.Error() == "interrupted" {

@@ -1,14 +1,8 @@
-package format
+package display
 
 import (
-	"fmt"
-	"io"
-	"os"
 	"strings"
 )
-
-// stdout is used to allow overriding in tests
-var stdout io.Writer = os.Stdout
 
 // Truncate string to max length with optional suffix (total output <= maxLen)
 func Truncate(s string, maxLen int, suffix string) string {
@@ -89,23 +83,4 @@ func Wrap(text string, width int) string {
 	}
 
 	return result.String()
-}
-
-// Print text with left bar prefix, handles line wrapping
-func PrintPrefixed(text string, prefix string, totalWidth int) {
-	prefixLen := len(prefix)
-	contentWidth := totalWidth - prefixLen
-	if contentWidth < 1 {
-		contentWidth = 1
-	}
-
-	wrapped := Wrap(text, contentWidth)
-	lines := strings.Split(wrapped, "\n")
-	for _, line := range lines {
-		if _, err := fmt.Fprintln(stdout, prefix+line); err != nil {
-			// In practice, this should never happen with stdout or a bytes.Buffer
-			// but we check it anyway to satisfy linting
-			return
-		}
-	}
 }

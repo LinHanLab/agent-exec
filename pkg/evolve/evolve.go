@@ -9,16 +9,17 @@ import (
 	"time"
 
 	"github.com/LinHanLab/agent-exec/pkg/claude"
+	"github.com/LinHanLab/agent-exec/pkg/events"
 	"github.com/LinHanLab/agent-exec/pkg/git"
 )
 
 // EvolveConfig holds configuration for the evolution process
 type EvolveConfig struct {
-	Plan               string        // Initial implementation prompt
-	ImprovePrompt      string        // Prompt for improvement step
-	ComparePrompt      string        // Prompt for comparison step
-	Iterations         int           // Number of evolution iterations
-	Sleep              time.Duration // Sleep duration between evolution rounds
+	Plan                string        // Initial implementation prompt
+	ImprovePrompt       string        // Prompt for improvement step
+	ComparePrompt       string        // Prompt for comparison step
+	Iterations          int           // Number of evolution iterations
+	Sleep               time.Duration // Sleep duration between evolution rounds
 	CompareErrorRetries int           // Number of retries when comparison parsing fails
 
 	// System prompts for each step
@@ -33,56 +34,50 @@ type EvolveConfig struct {
 }
 
 // Evolve runs the evolutionary code improvement loop
-func Evolve(cfg EvolveConfig) (string, error) {
+func Evolve(cfg EvolveConfig, emitter events.Emitter) error {
 	// Set up signal handler for graceful shutdown
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	defer signal.Stop(sigChan)
 
+	// Create git client with emitter
+	gitClient := git.NewClient(emitter)
+
 	// Save original branch to return to on error
-	originalBranch, err := git.GetCurrentBranch()
+	originalBranch, err := gitClient.GetCurrentBranch()
 	if err != nil {
-		return "", fmt.Errorf("failed to get current branch: %w", err)
+		return err
 	}
 
-	fmt.Println("=========================================")
-	fmt.Println("🧬 Starting Evolution")
-	fmt.Printf("Iterations: %d\n", cfg.Iterations)
-	fmt.Printf("Base branch: %s\n", originalBranch)
-	fmt.Println("=========================================")
-	fmt.Println()
+	emitter.Emit(events.EventEvolveStarted, events.EvolveStartedData{
+		Prompt:     cfg.Plan,
+		Iterations: cfg.Iterations,
+	})
 
 	// Check for interrupt
 	select {
 	case <-sigChan:
-		return "", fmt.Errorf("interrupted")
+		return fmt.Errorf("interrupted")
 	default:
 	}
 
 	// INITIAL: Create first implementation
 	branchA := git.RandomBranchName()
-	fmt.Printf("🌱 Creating initial branch: %s\n", branchA)
 
-	if err := git.CreateBranch(branchA); err != nil {
-		return "", fmt.Errorf("failed to create initial branch: %w", err)
+	if err := gitClient.CreateBranch(branchA); err != nil {
+		return err
 	}
-
-	fmt.Println()
-	fmt.Println("🔨 Implementing plan...")
-	fmt.Println()
 
 	planOpts := &claude.PromptOptions{
 		SystemPrompt:       cfg.PlanSystemPrompt,
 		AppendSystemPrompt: cfg.PlanAppendSystemPrompt,
 	}
-	if _, err := claude.RunPrompt(cfg.Plan, planOpts); err != nil {
-		return "", fmt.Errorf("initial implementation failed: %w", err)
+	if _, err := claude.RunPrompt(cfg.Plan, planOpts, emitter); err != nil {
+		return err
 	}
 
-	fmt.Println()
-	fmt.Printf("📦 Squashing commits on %s\n", branchA)
-	if err := git.SquashCommits(originalBranch, "implement: "+truncate(cfg.Plan, 50)); err != nil {
-		return "", fmt.Errorf("failed to squash: %w", err)
+	if err := gitClient.SquashCommits(originalBranch, "implement: "+truncate(cfg.Plan, 50)); err != nil {
+		return err
 	}
 
 	winner := branchA
@@ -92,57 +87,56 @@ func Evolve(cfg EvolveConfig) (string, error) {
 		// Check for interrupt
 		select {
 		case <-sigChan:
-			fmt.Println("\n\n⚠️ Interrupted. Current winner:", winner)
-			return winner, fmt.Errorf("interrupted")
+			emitter.Emit(events.EventEvolveInterrupted, events.EvolveInterruptedData{
+				CompletedRounds: i - 1,
+				TotalRounds:     cfg.Iterations,
+				Winner:          winner,
+			})
+			return fmt.Errorf("interrupted")
 		default:
 		}
 
-		fmt.Println()
-		fmt.Println("=========================================")
-		fmt.Printf("🔄 Evolution Round %d of %d\n", i, cfg.Iterations)
-		fmt.Println("=========================================")
-		fmt.Println()
+		emitter.Emit(events.EventRoundStarted, events.RoundStartedData{
+			Round: i,
+			Total: cfg.Iterations,
+		})
 
 		// Create improvement branch from winner
 		branchB := git.RandomBranchName()
-		fmt.Printf("🌿 Creating improvement branch: %s (from %s)\n", branchB, winner)
 
-		if err := git.CreateBranchFrom(branchB, winner); err != nil {
-			return winner, fmt.Errorf("failed to create improvement branch: %w", err)
+		if err := gitClient.CreateBranchFrom(branchB, winner); err != nil {
+			return err
 		}
 
-		fmt.Println()
-		fmt.Println("✨ Improving code...")
-		fmt.Println()
+		emitter.Emit(events.EventImprovementStarted, events.ImprovementStartedData{
+			BranchName: branchB,
+		})
 
 		improveOpts := &claude.PromptOptions{
 			SystemPrompt:       cfg.ImproveSystemPrompt,
 			AppendSystemPrompt: cfg.ImproveAppendSystemPrompt,
 		}
-		if _, err := claude.RunPrompt(cfg.ImprovePrompt, improveOpts); err != nil {
-			return winner, fmt.Errorf("improvement failed: %w", err)
+		if _, err := claude.RunPrompt(cfg.ImprovePrompt, improveOpts, emitter); err != nil {
+			return err
 		}
 
-		fmt.Println()
-		fmt.Printf("📦 Squashing commits on %s\n", branchB)
-		if err := git.SquashCommits(originalBranch, "improve: round "+fmt.Sprint(i)); err != nil {
-			return winner, fmt.Errorf("failed to squash improvement: %w", err)
+		if err := gitClient.SquashCommits(originalBranch, "improve: round "+fmt.Sprint(i)); err != nil {
+			return err
 		}
 
 		// Compare branches
-		fmt.Println()
-		fmt.Println("⚖️ Comparing implementations...")
-		fmt.Printf("Branch 1: %s\n", winner)
-		fmt.Printf("Branch 2: %s\n", branchB)
-		fmt.Println()
+		emitter.Emit(events.EventComparisonStarted, events.ComparisonStartedData{
+			Branch1: winner,
+			Branch2: branchB,
+		})
 
 		// Build comparison prompt with branch names
 		comparePrompt := fmt.Sprintf("%s\n\nBranch names to compare:\n- %s\n- %s\n\nRespond with ONLY the branch name that should be DELETED (the worse one).",
 			cfg.ComparePrompt, winner, branchB)
 
 		// Switch to original branch for comparison (neutral ground)
-		if err := git.Checkout(originalBranch); err != nil {
-			return winner, fmt.Errorf("failed to checkout base for comparison: %w", err)
+		if err := gitClient.Checkout(originalBranch); err != nil {
+			return err
 		}
 
 		compareOpts := &claude.PromptOptions{
@@ -156,12 +150,15 @@ func Evolve(cfg EvolveConfig) (string, error) {
 		var err error
 		for attempt := 0; attempt <= cfg.CompareErrorRetries; attempt++ {
 			if attempt > 0 {
-				fmt.Printf("⚠️  Retry attempt %d/%d for comparison...\n", attempt, cfg.CompareErrorRetries)
+				emitter.Emit(events.EventComparisonRetry, events.ComparisonRetryData{
+					Attempt:     attempt,
+					MaxAttempts: cfg.CompareErrorRetries,
+				})
 			}
 
-			result, err = claude.RunPrompt(comparePrompt, compareOpts)
+			result, err = claude.RunPrompt(comparePrompt, compareOpts, emitter)
 			if err != nil {
-				return winner, fmt.Errorf("comparison failed: %w", err)
+				return err
 			}
 
 			// Try to parse the loser branch from Claude's response
@@ -171,7 +168,7 @@ func Evolve(cfg EvolveConfig) (string, error) {
 			}
 
 			if attempt == cfg.CompareErrorRetries {
-				return winner, fmt.Errorf("failed to parse comparison result after %d retries: %w", cfg.CompareErrorRetries, err)
+				return fmt.Errorf("failed to parse comparison result after %d retries: %w", cfg.CompareErrorRetries, err)
 			}
 		}
 
@@ -179,39 +176,48 @@ func Evolve(cfg EvolveConfig) (string, error) {
 		if loser == winner {
 			winner = branchB
 		}
-		fmt.Printf("🏆 Winner: %s\n", winner)
+		emitter.Emit(events.EventWinnerSelected, events.WinnerSelectedData{
+			Winner: winner,
+			Loser:  loser,
+		})
 
 		// Checkout winner for next iteration
-		if err := git.Checkout(winner); err != nil {
-			return winner, fmt.Errorf("failed to checkout winner: %w", err)
+		if err := gitClient.Checkout(winner); err != nil {
+			return err
 		}
 
-		fmt.Printf("🗑️ Deleting loser branch: %s\n", loser)
-		if err := git.DeleteBranch(loser); err != nil {
-			return winner, fmt.Errorf("failed to delete loser: %w", err)
+		if err := gitClient.DeleteBranch(loser); err != nil {
+			return err
 		}
 
 		// Sleep between evolution rounds (skip after last iteration)
 		if i < cfg.Iterations && cfg.Sleep > 0 {
-			fmt.Printf("💤 Sleeping for %s before next evolution round...\n", cfg.Sleep)
+			emitter.Emit(events.EventSleepStarted, events.SleepStartedData{
+				Duration: cfg.Sleep,
+			})
 
 			timer := time.NewTimer(cfg.Sleep)
 			select {
 			case <-sigChan:
 				timer.Stop()
-				fmt.Println("\n\n⚠️ Interrupted. Current winner:", winner)
-				return winner, fmt.Errorf("interrupted")
+				emitter.Emit(events.EventEvolveInterrupted, events.EvolveInterruptedData{
+					CompletedRounds: i,
+					TotalRounds:     cfg.Iterations,
+					Winner:          winner,
+				})
+				return fmt.Errorf("interrupted")
 			case <-timer.C:
 			}
 		}
 	}
 
-	fmt.Println()
-	fmt.Println("=========================================")
-	fmt.Printf("🎉 Evolution complete! Final winner: %s\n", winner)
-	fmt.Println("=========================================")
+	emitter.Emit(events.EventEvolveCompleted, events.EvolveCompletedData{
+		FinalBranch:   winner,
+		TotalRounds:   cfg.Iterations,
+		TotalDuration: 0, // Not tracking total duration for now
+	})
 
-	return winner, nil
+	return nil
 }
 
 // parseBranchFromResponse extracts the loser branch name from Claude's response

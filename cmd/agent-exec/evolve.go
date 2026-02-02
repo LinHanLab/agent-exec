@@ -5,15 +5,17 @@ import (
 	"os"
 	"time"
 
+	"github.com/LinHanLab/agent-exec/pkg/display"
+	"github.com/LinHanLab/agent-exec/pkg/events"
 	"github.com/LinHanLab/agent-exec/pkg/evolve"
 	"github.com/spf13/cobra"
 )
 
 var (
-	improvePrompt string
-	comparePrompt string
-	evolveIters   int
-	evolveSleep   time.Duration
+	improvePrompt       string
+	comparePrompt       string
+	evolveIters         int
+	evolveSleep         time.Duration
 	compareErrorRetries int
 
 	planSystemPrompt       string
@@ -48,11 +50,11 @@ Examples:
 		plan := args[0]
 
 		cfg := evolve.EvolveConfig{
-			Plan:          plan,
-			ImprovePrompt: improvePrompt,
-			ComparePrompt: comparePrompt,
-			Iterations:    evolveIters,
-			Sleep:         evolveSleep,
+			Plan:                plan,
+			ImprovePrompt:       improvePrompt,
+			ComparePrompt:       comparePrompt,
+			Iterations:          evolveIters,
+			Sleep:               evolveSleep,
 			CompareErrorRetries: compareErrorRetries,
 
 			PlanSystemPrompt:       planSystemPrompt,
@@ -65,17 +67,25 @@ Examples:
 			CompareAppendSystemPrompt: compareAppendSystemPrompt,
 		}
 
-		winner, err := evolve.Evolve(cfg)
+		// Create emitter and display
+		emitter := events.NewChannelEmitter(100)
+		formatter := display.NewConsoleFormatter(os.Stdout)
+		disp := display.NewDisplay(formatter, emitter)
+		disp.Start()
+
+		err := evolve.Evolve(cfg, emitter)
+
+		// Close emitter and wait for display to finish
+		emitter.Close()
+		disp.Wait()
+
 		if err != nil {
 			if err.Error() == "interrupted" {
-				fmt.Printf("\nInterrupted. Winner so far: %s\n", winner)
 				os.Exit(130)
 			}
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
-
-		fmt.Printf("\nFinal branch: %s\n", winner)
 	},
 }
 

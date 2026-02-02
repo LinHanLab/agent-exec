@@ -5,15 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"sort"
+	"time"
 
-	"github.com/LinHanLab/agent-exec/pkg/format"
+	"github.com/LinHanLab/agent-exec/pkg/events"
 )
 
-const maxResultDisplay = 200
-
 // ParseStreamJSON parses streaming JSON output from claude CLI and returns the final result text
-func ParseStreamJSON(reader io.Reader, writer io.Writer) (string, error) {
+func ParseStreamJSON(reader io.Reader, emitter events.Emitter) (string, error) {
 	scanner := bufio.NewScanner(reader)
 	buf := make([]byte, 0, 1024*1024)
 	scanner.Buffer(buf, 10*1024*1024)
@@ -28,8 +26,7 @@ func ParseStreamJSON(reader io.Reader, writer io.Writer) (string, error) {
 
 		var msg ClaudeMessage
 		if err := json.Unmarshal([]byte(line), &msg); err != nil {
-			_, _ = fmt.Fprintf(writer, "⚠️ JSON parse error: %v\n", err)
-			continue
+			return "", fmt.Errorf("failed to parse JSON output: %w", err)
 		}
 
 		switch msg.Type {
@@ -37,15 +34,14 @@ func ParseStreamJSON(reader io.Reader, writer io.Writer) (string, error) {
 			for _, content := range msg.Message.Content {
 				switch content.Type {
 				case "text":
-					_, _ = fmt.Fprintf(writer, "💬 %s\n", content.Text)
+					emitter.Emit(events.EventClaudeAssistantMessage, events.AssistantMessageData{
+						Text: content.Text,
+					})
 				case "tool_use":
-					_, _ = fmt.Fprintf(writer, "🔧 %s%s%s", format.Bold, content.Name, format.Reset)
-					if len(content.Input) > 0 {
-						_, _ = fmt.Fprintln(writer)
-						FormatToolInputs(writer, content.Input)
-					} else {
-						_, _ = fmt.Fprintln(writer)
-					}
+					emitter.Emit(events.EventClaudeToolUse, events.ToolUseData{
+						Name:  content.Name,
+						Input: content.Input,
+					})
 				}
 			}
 		case "user":
@@ -53,50 +49,26 @@ func ParseStreamJSON(reader io.Reader, writer io.Writer) (string, error) {
 				if content.Type == "tool_result" && content.Content != nil {
 					resultStr := contentToString(content.Content)
 					if resultStr != "" {
-						result := truncateResult(resultStr, maxResultDisplay)
-						_, _ = fmt.Fprintf(writer, "✅ %sResult%s: %s\n", format.Green, format.Reset, result)
+						emitter.Emit(events.EventClaudeToolResult, events.ToolResultData{
+							Content: resultStr,
+						})
 					}
 				}
 			}
 		case "result":
 			if msg.Result != "" {
 				resultText = msg.Result
-				_, _ = fmt.Fprintf(writer, "✅ %s\n", msg.Result)
 			}
 			if msg.DurationMs > 0 {
-				durationSec := float64(msg.DurationMs) / 1000.0
-				_, _ = fmt.Fprintf(writer, "⏱️ Duration: %.2fs\n", durationSec)
+				duration := time.Duration(msg.DurationMs) * time.Millisecond
+				emitter.Emit(events.EventClaudeExecutionResult, events.ExecutionResultData{
+					Duration: duration,
+				})
 			}
 		}
 	}
 
 	return resultText, scanner.Err()
-}
-
-// truncateResult truncates a result string to maxLen if needed
-func truncateResult(result string, maxLen int) string {
-	if len(result) > maxLen {
-		return result[:maxLen] + "..."
-	}
-	return result
-}
-
-// FormatToolInputs formats and prints tool inputs with proper alignment
-func FormatToolInputs(writer io.Writer, inputs map[string]interface{}) {
-	keys := make([]string, 0, len(inputs))
-	for k := range inputs {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-
-	for _, key := range keys {
-		value := inputs[key]
-		valueStr := fmt.Sprintf("%v", value)
-		if len(valueStr) > 100 {
-			valueStr = valueStr[:100] + "..."
-		}
-		_, _ = fmt.Fprintf(writer, "     %s%s%s: %s\n", format.Cyan, key, format.Reset, valueStr)
-	}
 }
 
 // contentToString converts content (string or array) to string

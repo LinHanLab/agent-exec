@@ -1,7 +1,6 @@
-package format
+package display
 
 import (
-	"bytes"
 	"testing"
 )
 
@@ -186,86 +185,6 @@ func TestWrap(t *testing.T) {
 			result := Wrap(tt.input, tt.width)
 			if result != tt.expected {
 				t.Errorf("Wrap(%q, %d) = %q; want %q", tt.input, tt.width, result, tt.expected)
-			}
-		})
-	}
-}
-
-func TestPrintPrefixed(t *testing.T) {
-	tests := []struct {
-		name       string
-		text       string
-		prefix     string
-		totalWidth int
-		want       string
-	}{
-		{
-			name:       "simple text",
-			text:       "hello world",
-			prefix:     "▐ ",
-			totalWidth: 80,
-			want:       "▐ hello world\n",
-		},
-		{
-			name:       "text needs wrapping",
-			text:       "this is a very long line of text that will need to be wrapped at word boundaries",
-			prefix:     "▐ ",
-			totalWidth: 20,
-			want:       "▐ this is a very\n▐ long line of\n▐ text that will\n▐ need to be\n▐ wrapped at word\n▐ boundaries\n",
-		},
-		{
-			name:       "empty text",
-			text:       "",
-			prefix:     "▐ ",
-			totalWidth: 80,
-			want:       "▐ \n",
-		},
-		{
-			name:       "text with newlines",
-			text:       "line one\nline two",
-			prefix:     "▐ ",
-			totalWidth: 80,
-			want:       "▐ line one\n▐ line two\n",
-		},
-		{
-			name:       "prefix longer than total width",
-			text:       "some text",
-			prefix:     "this is a very long prefix",
-			totalWidth: 10,
-			want:       "this is a very long prefixs\nthis is a very long prefixo\nthis is a very long prefixm\nthis is a very long prefixe\nthis is a very long prefixt\nthis is a very long prefixe\nthis is a very long prefixx\nthis is a very long prefixt\n",
-		},
-		{
-			name:       "total width equals prefix length",
-			text:       "some text",
-			prefix:     "12345",
-			totalWidth: 5,
-			want:       "12345s\n12345o\n12345m\n12345e\n12345t\n12345e\n12345x\n12345t\n",
-		},
-		{
-			name:       "single character",
-			text:       "a",
-			prefix:     "▐ ",
-			totalWidth: 80,
-			want:       "▐ a\n",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Capture stdout
-			buf := new(bytes.Buffer)
-			oldStdout := stdout
-			stdout = buf
-			// Restore after test
-			defer func() {
-				stdout = oldStdout
-			}()
-
-			PrintPrefixed(tt.text, tt.prefix, tt.totalWidth)
-
-			result := buf.String()
-			if result != tt.want {
-				t.Errorf("PrintPrefixed(%q, %q, %d) = %q; want %q", tt.text, tt.prefix, tt.totalWidth, result, tt.want)
 			}
 		})
 	}
