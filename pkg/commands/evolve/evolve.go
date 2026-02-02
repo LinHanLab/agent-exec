@@ -33,190 +33,241 @@ type EvolveConfig struct {
 	CompareAppendSystemPrompt string
 }
 
+// EvolutionRunner holds state for the evolution process
+type EvolutionRunner struct {
+	config         EvolveConfig
+	gitClient      *git.Client
+	emitter        events.Emitter
+	originalBranch string
+	currentWinner  string
+	sigChan        chan os.Signal
+}
+
 // Evolve runs the evolutionary code improvement loop
 func Evolve(cfg EvolveConfig, emitter events.Emitter) error {
-	// Set up signal handler for graceful shutdown
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	defer signal.Stop(sigChan)
+	runner := &EvolutionRunner{
+		config:  cfg,
+		emitter: emitter,
+	}
+	return runner.run()
+}
 
-	// Create git client with emitter
-	gitClient := git.NewClient(emitter)
+// run orchestrates the entire evolution process
+func (r *EvolutionRunner) run() error {
+	r.setupSignals()
+	defer signal.Stop(r.sigChan)
 
-	// Save original branch to return to on error
-	originalBranch, err := gitClient.GetCurrentBranch()
+	r.gitClient = git.NewClient(r.emitter)
+
+	var err error
+	r.originalBranch, err = r.gitClient.GetCurrentBranch()
 	if err != nil {
 		return err
 	}
 
-	emitter.Emit(events.EventEvolveStarted, events.EvolveStartedData{
-		TotalIterations: cfg.Iterations,
+	r.emitter.Emit(events.EventEvolveStarted, events.EvolveStartedData{
+		TotalIterations: r.config.Iterations,
 	})
 
-	// Check for interrupt
-	select {
-	case <-sigChan:
-		return fmt.Errorf("interrupted")
-	default:
+	if err := r.checkInterrupted(); err != nil {
+		return err
 	}
 
-	// INITIAL: Create first implementation
+	if err := r.executeInitialPlan(); err != nil {
+		return err
+	}
+
+	// EVOLUTION LOOP
+	for i := 1; i <= r.config.Iterations; i++ {
+		if err := r.checkInterrupted(); err != nil {
+			r.emitter.Emit(events.EventEvolveInterrupted, events.EvolveInterruptedData{
+				CompletedRounds: i - 1,
+				TotalRounds:     r.config.Iterations,
+				Winner:          r.currentWinner,
+			})
+			return err
+		}
+
+		r.emitter.Emit(events.EventRoundStarted, events.RoundStartedData{
+			Round: i,
+			Total: r.config.Iterations,
+		})
+
+		challenger, err := r.improveWinner(i)
+		if err != nil {
+			return err
+		}
+
+		if err := r.compareAndUpdate(challenger); err != nil {
+			return err
+		}
+
+		if i < r.config.Iterations && r.config.Sleep > 0 {
+			if err := r.waitBetweenRounds(i); err != nil {
+				return err
+			}
+		}
+	}
+
+	r.emitter.Emit(events.EventEvolveCompleted, events.EvolveCompletedData{
+		FinalBranch:   r.currentWinner,
+		TotalRounds:   r.config.Iterations,
+		TotalDuration: 0,
+	})
+
+	return nil
+}
+
+// setupSignals configures signal handling for graceful shutdown
+func (r *EvolutionRunner) setupSignals() {
+	r.sigChan = make(chan os.Signal, 1)
+	signal.Notify(r.sigChan, syscall.SIGINT, syscall.SIGTERM)
+}
+
+// checkInterrupted checks if an interrupt signal was received
+func (r *EvolutionRunner) checkInterrupted() error {
+	select {
+	case <-r.sigChan:
+		return fmt.Errorf("interrupted")
+	default:
+		return nil
+	}
+}
+
+// executeInitialPlan creates and runs the initial implementation
+func (r *EvolutionRunner) executeInitialPlan() error {
 	branchA := git.RandomBranchName()
 
-	if err := gitClient.CreateBranch(branchA); err != nil {
+	if err := r.gitClient.CreateBranch(branchA); err != nil {
 		return err
 	}
 
 	planOpts := &claude.PromptOptions{
-		SystemPrompt:       cfg.PlanSystemPrompt,
-		AppendSystemPrompt: cfg.PlanAppendSystemPrompt,
+		SystemPrompt:       r.config.PlanSystemPrompt,
+		AppendSystemPrompt: r.config.PlanAppendSystemPrompt,
 	}
-	if _, err := claude.RunPrompt(cfg.Plan, planOpts, emitter); err != nil {
+	if _, err := claude.RunPrompt(r.config.Plan, planOpts, r.emitter); err != nil {
 		return err
 	}
 
-	if err := gitClient.SquashCommits(originalBranch, "implement: "+truncate(cfg.Plan, 50)); err != nil {
+	if err := r.gitClient.SquashCommits(r.originalBranch, "implement: "+truncate(r.config.Plan, 50)); err != nil {
 		return err
 	}
 
-	winner := branchA
+	r.currentWinner = branchA
+	return nil
+}
 
-	// EVOLUTION LOOP
-	for i := 1; i <= cfg.Iterations; i++ {
-		// Check for interrupt
-		select {
-		case <-sigChan:
-			emitter.Emit(events.EventEvolveInterrupted, events.EvolveInterruptedData{
-				CompletedRounds: i - 1,
-				TotalRounds:     cfg.Iterations,
-				Winner:          winner,
-			})
-			return fmt.Errorf("interrupted")
-		default:
-		}
+// improveWinner creates an improvement branch and runs the improvement prompt
+func (r *EvolutionRunner) improveWinner(roundNum int) (string, error) {
+	challenger := git.RandomBranchName()
 
-		emitter.Emit(events.EventRoundStarted, events.RoundStartedData{
-			Round: i,
-			Total: cfg.Iterations,
-		})
-
-		// Create improvement branch from winner
-		branchB := git.RandomBranchName()
-
-		if err := gitClient.CreateBranchFrom(branchB, winner); err != nil {
-			return err
-		}
-
-		emitter.Emit(events.EventImprovementStarted, events.ImprovementStartedData{
-			BranchName: branchB,
-		})
-
-		improveOpts := &claude.PromptOptions{
-			SystemPrompt:       cfg.ImproveSystemPrompt,
-			AppendSystemPrompt: cfg.ImproveAppendSystemPrompt,
-		}
-		if _, err := claude.RunPrompt(cfg.ImprovePrompt, improveOpts, emitter); err != nil {
-			return err
-		}
-
-		if err := gitClient.SquashCommits(originalBranch, "improve: round "+fmt.Sprint(i)); err != nil {
-			return err
-		}
-
-		// Compare branches
-		emitter.Emit(events.EventComparisonStarted, events.ComparisonStartedData{
-			Branch1: winner,
-			Branch2: branchB,
-		})
-
-		// Build comparison prompt with branch names
-		comparePrompt := fmt.Sprintf("%s\n\nBranch names to compare:\n- %s\n- %s\n\nRespond with ONLY the branch name that should be DELETED (the worse one).",
-			cfg.ComparePrompt, winner, branchB)
-
-		// Switch to original branch for comparison (neutral ground)
-		if err := gitClient.Checkout(originalBranch); err != nil {
-			return err
-		}
-
-		compareOpts := &claude.PromptOptions{
-			SystemPrompt:       cfg.CompareSystemPrompt,
-			AppendSystemPrompt: cfg.CompareAppendSystemPrompt,
-		}
-
-		// Retry comparison if parsing fails
-		var loser string
-		var result string
-		var err error
-		for attempt := 0; attempt <= cfg.CompareErrorRetries; attempt++ {
-			if attempt > 0 {
-				emitter.Emit(events.EventComparisonRetry, events.ComparisonRetryData{
-					Attempt:     attempt,
-					MaxAttempts: cfg.CompareErrorRetries,
-				})
-			}
-
-			result, err = claude.RunPrompt(comparePrompt, compareOpts, emitter)
-			if err != nil {
-				return err
-			}
-
-			// Try to parse the loser branch from Claude's response
-			loser, err = parseBranchFromResponse(result, winner, branchB)
-			if err == nil {
-				break // Successfully parsed
-			}
-
-			if attempt == cfg.CompareErrorRetries {
-				return fmt.Errorf("failed to parse comparison result after %d retries: %w", cfg.CompareErrorRetries, err)
-			}
-		}
-
-		// Update winner
-		if loser == winner {
-			winner = branchB
-		}
-		emitter.Emit(events.EventWinnerSelected, events.WinnerSelectedData{
-			Winner: winner,
-			Loser:  loser,
-		})
-
-		// Checkout winner for next iteration
-		if err := gitClient.Checkout(winner); err != nil {
-			return err
-		}
-
-		if err := gitClient.DeleteBranch(loser); err != nil {
-			return err
-		}
-
-		// Sleep between evolution rounds (skip after last iteration)
-		if i < cfg.Iterations && cfg.Sleep > 0 {
-			emitter.Emit(events.EventSleepStarted, events.SleepStartedData{
-				Duration: cfg.Sleep,
-			})
-
-			timer := time.NewTimer(cfg.Sleep)
-			select {
-			case <-sigChan:
-				timer.Stop()
-				emitter.Emit(events.EventEvolveInterrupted, events.EvolveInterruptedData{
-					CompletedRounds: i,
-					TotalRounds:     cfg.Iterations,
-					Winner:          winner,
-				})
-				return fmt.Errorf("interrupted")
-			case <-timer.C:
-			}
-		}
+	if err := r.gitClient.CreateBranchFrom(challenger, r.currentWinner); err != nil {
+		return "", err
 	}
 
-	emitter.Emit(events.EventEvolveCompleted, events.EvolveCompletedData{
-		FinalBranch:   winner,
-		TotalRounds:   cfg.Iterations,
-		TotalDuration: 0, // Not tracking total duration for now
+	r.emitter.Emit(events.EventImprovementStarted, events.ImprovementStartedData{
+		BranchName: challenger,
 	})
 
+	improveOpts := &claude.PromptOptions{
+		SystemPrompt:       r.config.ImproveSystemPrompt,
+		AppendSystemPrompt: r.config.ImproveAppendSystemPrompt,
+	}
+	if _, err := claude.RunPrompt(r.config.ImprovePrompt, improveOpts, r.emitter); err != nil {
+		return "", err
+	}
+
+	if err := r.gitClient.SquashCommits(r.originalBranch, "improve: round "+fmt.Sprint(roundNum)); err != nil {
+		return "", err
+	}
+
+	return challenger, nil
+}
+
+// compareAndUpdate compares branches and updates the winner
+func (r *EvolutionRunner) compareAndUpdate(challenger string) error {
+	r.emitter.Emit(events.EventComparisonStarted, events.ComparisonStartedData{
+		Branch1: r.currentWinner,
+		Branch2: challenger,
+	})
+
+	comparePrompt := fmt.Sprintf("%s\n\nBranch names to compare:\n- %s\n- %s\n\nRespond with ONLY the branch name that should be DELETED (the worse one).",
+		r.config.ComparePrompt, r.currentWinner, challenger)
+
+	if err := r.gitClient.Checkout(r.originalBranch); err != nil {
+		return err
+	}
+
+	compareOpts := &claude.PromptOptions{
+		SystemPrompt:       r.config.CompareSystemPrompt,
+		AppendSystemPrompt: r.config.CompareAppendSystemPrompt,
+	}
+
+	var loser string
+	var err error
+	for attempt := 0; attempt <= r.config.CompareErrorRetries; attempt++ {
+		if attempt > 0 {
+			r.emitter.Emit(events.EventComparisonRetry, events.ComparisonRetryData{
+				Attempt:     attempt,
+				MaxAttempts: r.config.CompareErrorRetries,
+			})
+		}
+
+		result, runErr := claude.RunPrompt(comparePrompt, compareOpts, r.emitter)
+		if runErr != nil {
+			return runErr
+		}
+
+		loser, err = parseBranchFromResponse(result, r.currentWinner, challenger)
+		if err == nil {
+			break
+		}
+
+		if attempt == r.config.CompareErrorRetries {
+			return fmt.Errorf("failed to parse comparison result after %d retries: %w", r.config.CompareErrorRetries, err)
+		}
+	}
+
+	if loser == r.currentWinner {
+		r.currentWinner = challenger
+	}
+
+	r.emitter.Emit(events.EventWinnerSelected, events.WinnerSelectedData{
+		Winner: r.currentWinner,
+		Loser:  loser,
+	})
+
+	if err := r.gitClient.Checkout(r.currentWinner); err != nil {
+		return err
+	}
+
+	if err := r.gitClient.DeleteBranch(loser); err != nil {
+		return err
+	}
+
 	return nil
+}
+
+// waitBetweenRounds implements interruptible sleep between evolution rounds
+func (r *EvolutionRunner) waitBetweenRounds(completedRound int) error {
+	r.emitter.Emit(events.EventSleepStarted, events.SleepStartedData{
+		Duration: r.config.Sleep,
+	})
+
+	timer := time.NewTimer(r.config.Sleep)
+	select {
+	case <-r.sigChan:
+		timer.Stop()
+		r.emitter.Emit(events.EventEvolveInterrupted, events.EvolveInterruptedData{
+			CompletedRounds: completedRound,
+			TotalRounds:     r.config.Iterations,
+			Winner:          r.currentWinner,
+		})
+		return fmt.Errorf("interrupted")
+	case <-timer.C:
+		return nil
+	}
 }
 
 // parseBranchFromResponse extracts the loser branch name from Claude's response
