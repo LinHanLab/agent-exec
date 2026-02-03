@@ -19,23 +19,49 @@ go install github.com/LinHanLab/agent-exec/cmd/agent-exec@latest
 ```bash
 agent-exec evolve <prompt>
 agent-exec evolve <prompt> -i <improve-prompt> -c <compare-prompt> -n <iterations>
+agent-exec evolve <prompt> -n <iterations> -s <sleep>
 ```
+
+#### 基础选项
 
 | 参数 | 说明 |
 |------|------|
 | 位置参数 | 提示词字符串（需引号包裹） |
-| `-i, --improve` | 改进提示词（默认："improve the code quality and fix any issues"） |
-| `-c, --compare` | 比较提示词（默认："compare these two implementations and determine which is worse"） |
 | `-n, --iterations` | 演化迭代次数（默认：3） |
 | `-s, --sleep` | 演化轮次间隔时长（默认：0，格式：2h30m、30s 等） |
-| `--compare-error-retries` | 比较解析失败时的重试次数（默认：3） |
-| `-v, --verbose` | 显示完整内容，不截断 |
+
+#### 提示词
+
+**计划代理：**
+
+| 参数 | 说明 |
+|------|------|
 | `--system-prompt` | 替换计划代理的系统提示词（空 = 使用 Claude Code 默认值） |
 | `--append-system-prompt` | 追加到计划代理的系统提示词（空 = 使用 Claude Code 默认值） |
+
+**改进代理：**
+
+| 参数 | 说明 |
+|------|------|
+| `-i, --improve` | 改进提示词（默认："improve the code quality and fix any issues"） |
 | `--improve-system-prompt` | 替换改进代理的系统提示词（空 = 使用 Claude Code 默认值） |
 | `--append-improve-system-prompt` | 追加到改进代理的系统提示词（空 = 使用 Claude Code 默认值） |
+
+**比较代理：**
+
+| 参数 | 说明 |
+|------|------|
+| `-c, --compare` | 比较提示词（默认："compare these two implementations and determine which is worse"） |
 | `--compare-system-prompt` | 替换比较代理的系统提示词（空 = 使用 Claude Code 默认值） |
 | `--append-compare-system-prompt` | 追加到比较代理的系统提示词（空 = 使用 Claude Code 默认值） |
+| `--compare-error-retries` | 比较解析失败时的重试次数（默认：3） |
+
+#### 高级选项
+
+| 参数 | 说明 |
+|------|------|
+| `--debug-keep-branches` | 调试模式：保留所有分支而不删除失败者 |
+| `-v, --verbose` | 显示完整内容，不截断 |
 
 **工作原理：**
 
@@ -73,12 +99,19 @@ agent-exec loop <prompt> -n <iterations>
 agent-exec loop <prompt> -n <iterations> -s <sleep>
 ```
 
+#### 基础选项
+
 | 参数 | 说明 |
 |------|------|
 | 位置参数 | 提示词字符串（需引号包裹） |
 | `-n, --iterations` | 迭代次数（默认：1） |
 | `-s, --sleep` | 迭代间隔时长（默认：0，格式：2h30m、30s 等） |
 | `-v, --verbose` | 显示完整内容，不截断 |
+
+#### 提示词
+
+| 参数 | 说明 |
+|------|------|
 | `--system-prompt` | 替换整个系统提示词（空 = 使用 Claude Code 默认值） |
 | `--append-system-prompt` | 追加到默认系统提示词（空 = 使用 Claude Code 默认值） |
 

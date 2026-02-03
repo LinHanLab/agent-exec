@@ -2,7 +2,7 @@
 
 English | [中文](README.zh-CN.md)
 
-Designed for long-running AI agent tasks, preventing LLM early stops, trading time and tokens for the best results. Minimal Claude Code controller for iterative refinement and Ralph loops.
+Automated iterative improvement for Claude Code. Prevents premature completion, trading time and tokens for the best results. Minimal controller for iterative refinement and [Ralph loops](https://beuke.org/ralph-wiggum-loop/).
 
 ## Installation
 
@@ -14,7 +14,7 @@ go install github.com/LinHanLab/agent-exec/cmd/agent-exec@latest
 
 ### Evolve Command
 
-Evolve code through tournament-style iterative improvement with competing branches.
+Tournament-style code evolution using git branches. Creates competing implementations, uses AI comparison to select winners, and iteratively improves through elimination rounds.
 
 ```bash
 agent-exec evolve <prompt>
@@ -22,21 +22,46 @@ agent-exec evolve <prompt> -i <improve-prompt> -c <compare-prompt> -n <iteration
 agent-exec evolve <prompt> -n <iterations> -s <sleep>
 ```
 
+#### Basic Options
+
 | Flag | Description |
 |------|-------------|
 | positional | Prompt string (quoted) |
-| `-i, --improve` | Improvement prompt (default: "improve the code quality and fix any issues") |
-| `-c, --compare` | Comparison prompt (default: "compare these two implementations and determine which is worse") |
 | `-n, --iterations` | Evolution iterations (default: 3) |
 | `-s, --sleep` | Sleep duration between evolution rounds (default: 0, format: 2h30m, 30s, etc.) |
-| `--compare-error-retries` | Number of retries when comparison parsing fails (default: 3) |
-| `-v, --verbose` | Show full content without truncation |
+
+#### Prompt
+
+**Plan Agent:**
+
+| Flag | Description |
+|------|-------------|
 | `--system-prompt` | Replace system prompt for plan agent (empty = use Claude Code defaults) |
 | `--append-system-prompt` | Append to system prompt for plan agent (empty = use Claude Code defaults) |
+
+**Improve Agent:**
+
+| Flag | Description |
+|------|-------------|
+| `-i, --improve` | Improvement prompt (default: "improve the code quality and fix any issues") |
 | `--improve-system-prompt` | Replace system prompt for improve agent (empty = use Claude Code defaults) |
 | `--append-improve-system-prompt` | Append to system prompt for improve agent (empty = use Claude Code defaults) |
+
+**Compare Agent:**
+
+| Flag | Description |
+|------|-------------|
+| `-c, --compare` | Comparison prompt (default: "compare these two implementations and determine which is worse") |
 | `--compare-system-prompt` | Replace system prompt for compare agent (empty = use Claude Code defaults) |
 | `--append-compare-system-prompt` | Append to system prompt for compare agent (empty = use Claude Code defaults) |
+| `--compare-error-retries` | Number of retries when comparison parsing fails (default: 3) |
+
+#### Advanced Options
+
+| Flag | Description |
+|------|-------------|
+| `--debug-keep-branches` | Debug mode: keep all branches instead of deleting losers |
+| `-v, --verbose` | Show full content without truncation |
 
 **How it works:**
 
@@ -74,12 +99,19 @@ agent-exec loop <prompt> -n <iterations>
 agent-exec loop <prompt> -n <iterations> -s <sleep>
 ```
 
+#### Basic Options
+
 | Flag | Description |
 |------|-------------|
 | positional | Prompt string (quoted) |
 | `-n, --iterations` | Number of iterations to run (default: 1) |
 | `-s, --sleep` | Sleep duration between iterations (default: 0, format: 2h30m, 30s, etc.) |
 | `-v, --verbose` | Show full content without truncation |
+
+#### Prompt
+
+| Flag | Description |
+|------|-------------|
 | `--system-prompt` | Replace entire system prompt (empty = use Claude Code defaults) |
 | `--append-system-prompt` | Append to default system prompt (empty = use Claude Code defaults) |
 
