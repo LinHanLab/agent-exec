@@ -2,7 +2,7 @@
 
 English | [中文](README.zh-CN.md)
 
-Automated iterative improvement for Claude Code, trading time and tokens for the best results.
+A CLI tool for automated iterative improvement with Claude Code, trading time and tokens for the best results.
 
 - Designed for long-running AI agent tasks
 - Runs Claude Code CLI in headless mode for automation

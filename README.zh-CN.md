@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-Claude Code 自动迭代改进工具，用时间和 token 换取最佳结果。
+让 Claude Code 自动迭代改进，用时间和 token 换最佳结果的 CLI 工具。
 
 - 专为长时间运行的 AI agent 任务设计
 - 以 headless 模式运行 Claude Code CLI，便于自动化
