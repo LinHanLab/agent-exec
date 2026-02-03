@@ -15,7 +15,7 @@ import (
 
 // EvolveConfig holds configuration for the evolution process
 type EvolveConfig struct {
-	Plan                string        // Initial implementation prompt
+	Prompt              string        // Initial implementation prompt
 	ImprovePrompt       string        // Prompt for improvement step
 	ComparePrompt       string        // Prompt for comparison step
 	Iterations          int           // Number of evolution iterations
@@ -24,8 +24,8 @@ type EvolveConfig struct {
 	DebugKeepBranches   bool          // Debug mode: keep all branches instead of deleting losers
 
 	// System prompts for each step
-	PlanSystemPrompt       string
-	PlanAppendSystemPrompt string
+	SystemPrompt       string
+	AppendSystemPrompt string
 
 	ImproveSystemPrompt       string
 	ImproveAppendSystemPrompt string
@@ -76,7 +76,7 @@ func (r *EvolutionRunner) run() error {
 		return err
 	}
 
-	if err := r.executeInitialPlan(); err != nil {
+	if err := r.executeInitialPrompt(); err != nil {
 		return err
 	}
 
@@ -139,19 +139,19 @@ func (r *EvolutionRunner) checkInterrupted() error {
 
 const gitCommitMessage = "finished"
 
-// executeInitialPlan creates and runs the initial implementation
-func (r *EvolutionRunner) executeInitialPlan() error {
+// executeInitialPrompt creates and runs the initial implementation
+func (r *EvolutionRunner) executeInitialPrompt() error {
 	branchA := git.RandomBranchName()
 
 	if err := r.gitClient.CreateBranch(branchA); err != nil {
 		return err
 	}
 
-	planOpts := &claude.PromptOptions{
-		SystemPrompt:       r.config.PlanSystemPrompt,
-		AppendSystemPrompt: r.config.PlanAppendSystemPrompt,
+	opts := &claude.PromptOptions{
+		SystemPrompt:       r.config.SystemPrompt,
+		AppendSystemPrompt: r.config.AppendSystemPrompt,
 	}
-	if _, err := claude.RunPrompt(r.config.Plan, planOpts, r.emitter); err != nil {
+	if _, err := claude.RunPrompt(r.config.Prompt, opts, r.emitter); err != nil {
 		return err
 	}
 

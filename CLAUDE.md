@@ -94,7 +94,7 @@ The tool executes Claude Code prompts via subprocess (`claude` CLI) and parses s
 
 The `evolve` command implements tournament-style code evolution:
 
-1. **Initial Plan**: Creates branch A, runs plan prompt, squashes commits
+1. **Initial Prompt**: Creates branch A, runs initial prompt, squashes commits
 2. **Evolution Loop** (N iterations):
    - Create challenger branch from current winner
    - Run improvement prompt on challenger

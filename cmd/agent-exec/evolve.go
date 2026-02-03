@@ -18,8 +18,8 @@ var (
 	evolveSleep         time.Duration
 	compareErrorRetries int
 
-	planSystemPrompt       string
-	planAppendSystemPrompt string
+	evolveSystemPrompt       string
+	evolveAppendSystemPrompt string
 
 	improveSystemPrompt       string
 	improveAppendSystemPrompt string
@@ -46,10 +46,10 @@ Example:
   agent-exec evolve "implement a snake game" -n 3`,
 	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		plan := args[0]
+		prompt := args[0]
 
 		cfg := evolve.EvolveConfig{
-			Plan:                plan,
+			Prompt:              prompt,
 			ImprovePrompt:       improvePrompt,
 			ComparePrompt:       comparePrompt,
 			Iterations:          evolveIters,
@@ -57,8 +57,8 @@ Example:
 			CompareErrorRetries: compareErrorRetries,
 			DebugKeepBranches:   debugKeepBranches,
 
-			PlanSystemPrompt:       planSystemPrompt,
-			PlanAppendSystemPrompt: planAppendSystemPrompt,
+			SystemPrompt:       evolveSystemPrompt,
+			AppendSystemPrompt: evolveAppendSystemPrompt,
 
 			ImproveSystemPrompt:       improveSystemPrompt,
 			ImproveAppendSystemPrompt: improveAppendSystemPrompt,
@@ -98,8 +98,8 @@ func init() {
 	evolveCmd.Flags().DurationVarP(&evolveSleep, "sleep", "s", 0, "Sleep duration between evolution rounds (e.g., 30s, 1m)")
 	evolveCmd.Flags().IntVar(&compareErrorRetries, "compare-error-retries", 3, "Retry attempts when comparison branch parsing fails")
 
-	evolveCmd.Flags().StringVar(&planSystemPrompt, "system-prompt", "", "Replace entire system prompt for initial plan step")
-	evolveCmd.Flags().StringVar(&planAppendSystemPrompt, "append-system-prompt", "", "Append to default system prompt for initial plan step")
+	evolveCmd.Flags().StringVar(&evolveSystemPrompt, "system-prompt", "", "Replace entire system prompt for initial prompt")
+	evolveCmd.Flags().StringVar(&evolveAppendSystemPrompt, "append-system-prompt", "", "Append to default system prompt for initial prompt")
 
 	evolveCmd.Flags().StringVar(&improveSystemPrompt, "improve-system-prompt", "", "Replace entire system prompt for improvement steps")
 	evolveCmd.Flags().StringVar(&improveAppendSystemPrompt, "append-improve-system-prompt", "", "Append to default system prompt for improvement steps")
