@@ -3,6 +3,7 @@ package display
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/LinHanLab/agent-exec/pkg/events"
 )
@@ -133,10 +134,17 @@ func formatClaudeAssistantMessage(event events.Event, ctx *FormatContext) (strin
 	timeStr := fmt.Sprintf("[%s] ", ctx.TextFormatter.FormatTime())
 	title := fmt.Sprintf("💬 %sAssistant", timeStr)
 	coloredTitle := fmt.Sprintf("%s%s%s", color, title, Reset)
-	content := ctx.TextFormatter.FormatContentWithFrame(data.Text)
-	coloredContent := fmt.Sprintf("%s%s%s", color, content, Reset)
 
-	return coloredTitle + coloredContent, nil
+	// Apply color to each line of text before framing
+	lines := strings.Split(data.Text, "\n")
+	coloredLines := make([]string, len(lines))
+	for i, line := range lines {
+		coloredLines[i] = fmt.Sprintf("%s%s%s", color, line, Reset)
+	}
+	coloredText := strings.Join(coloredLines, "\n")
+	content := ctx.TextFormatter.FormatContentWithFrame(coloredText)
+
+	return coloredTitle + content, nil
 }
 
 func formatClaudeToolUse(event events.Event, ctx *FormatContext) (string, error) {
