@@ -70,6 +70,8 @@ func (r *EvolutionRunner) run() error {
 		TotalIterations: r.config.Iterations,
 	})
 
+	evolveStartTime := time.Now()
+
 	if err := r.checkInterrupted(); err != nil {
 		return err
 	}
@@ -113,7 +115,7 @@ func (r *EvolutionRunner) run() error {
 	r.emitter.Emit(events.EventEvolveCompleted, events.EvolveCompletedData{
 		FinalBranch:   r.currentWinner,
 		TotalRounds:   r.config.Iterations,
-		TotalDuration: 0,
+		TotalDuration: time.Since(evolveStartTime),
 	})
 
 	return nil

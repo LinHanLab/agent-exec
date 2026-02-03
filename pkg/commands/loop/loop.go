@@ -42,6 +42,8 @@ func RunPromptLoop(iterations int, sleep time.Duration, prompt string, opts *cla
 		TotalIterations: iterations,
 	})
 
+	loopStartTime := time.Now()
+
 	// Run the iteration loop
 	for i := 1; i <= iterations; i++ {
 		// Check for interrupt before starting iteration
@@ -104,7 +106,7 @@ func RunPromptLoop(iterations int, sleep time.Duration, prompt string, opts *cla
 		TotalIterations:      iterations,
 		SuccessfulIterations: iterations - failedIterations,
 		FailedIterations:     failedIterations,
-		TotalDuration:        0, // Not tracking total duration for now
+		TotalDuration:        time.Since(loopStartTime),
 	})
 
 	return nil
