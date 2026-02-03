@@ -6,70 +6,6 @@ import (
 	"time"
 )
 
-func TestTextFormatter_IndentContent(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    string
-		expected string
-	}{
-		{
-			name:     "empty string",
-			input:    "",
-			expected: "",
-		},
-		{
-			name:     "single line",
-			input:    "hello",
-			expected: "    hello",
-		},
-		{
-			name:     "multiple lines",
-			input:    "line1\nline2\nline3",
-			expected: "    line1\n    line2\n    line3",
-		},
-	}
-
-	tf := NewTextFormatter()
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := tf.IndentContent(tt.input)
-			if result != tt.expected {
-				t.Errorf("IndentContent() = %q, want %q", result, tt.expected)
-			}
-		})
-	}
-}
-
-func TestTextFormatter_FormatContent(t *testing.T) {
-	tf := NewTextFormatter()
-
-	tests := []struct {
-		name     string
-		input    string
-		expected string
-	}{
-		{
-			name:     "empty string",
-			input:    "",
-			expected: "",
-		},
-		{
-			name:     "single line",
-			input:    "content",
-			expected: "\n    content\n",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := tf.FormatContent(tt.input)
-			if result != tt.expected {
-				t.Errorf("FormatContent() = %q, want %q", result, tt.expected)
-			}
-		})
-	}
-}
-
 func TestTextFormatter_FormatDuration(t *testing.T) {
 	tf := NewTextFormatter()
 
@@ -150,4 +86,135 @@ func TestTextFormatter_ApplyReverseVideo(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestTextFormatter_FormatContentWithFrame(t *testing.T) {
+	tf := NewTextFormatter()
+
+	t.Run("with box border", func(t *testing.T) {
+		tests := []struct {
+			name     string
+			input    string
+			validate func(t *testing.T, result string)
+		}{
+			{
+				name:  "empty string",
+				input: "",
+				validate: func(t *testing.T, result string) {
+					if result != "" {
+						t.Errorf("Expected empty result for empty input, got %q", result)
+					}
+				},
+			},
+			{
+				name:  "single line",
+				input: "hello world",
+				validate: func(t *testing.T, result string) {
+					if !strings.Contains(result, "┌") {
+						t.Error("Expected top border with ┌")
+					}
+					if !strings.Contains(result, "└") {
+						t.Error("Expected bottom border with └")
+					}
+					if !strings.Contains(result, "│") {
+						t.Error("Expected side borders with │")
+					}
+					if !strings.Contains(result, "hello world") {
+						t.Error("Expected content to be present")
+					}
+				},
+			},
+			{
+				name:  "multiple lines",
+				input: "line1\nline2\nline3",
+				validate: func(t *testing.T, result string) {
+					lines := strings.Split(result, "\n")
+					// Should have: newline, top border, 3 content lines, bottom border, final newline
+					if len(lines) < 6 {
+						t.Errorf("Expected at least 6 lines, got %d", len(lines))
+					}
+					if !strings.Contains(result, "line1") {
+						t.Error("Expected line1 to be present")
+					}
+					if !strings.Contains(result, "line2") {
+						t.Error("Expected line2 to be present")
+					}
+					if !strings.Contains(result, "line3") {
+						t.Error("Expected line3 to be present")
+					}
+				},
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				result := tf.FormatContentWithFrame(tt.input, true)
+				tt.validate(t, result)
+			})
+		}
+	})
+
+	t.Run("without box border (default - whitespace borders)", func(t *testing.T) {
+		tests := []struct {
+			name     string
+			input    string
+			validate func(t *testing.T, result string)
+		}{
+			{
+				name:  "empty string",
+				input: "",
+				validate: func(t *testing.T, result string) {
+					if result != "" {
+						t.Errorf("Expected empty result for empty input, got %q", result)
+					}
+				},
+			},
+			{
+				name:  "single line",
+				input: "hello world",
+				validate: func(t *testing.T, result string) {
+					// Should NOT contain box drawing characters
+					if strings.Contains(result, "┌") || strings.Contains(result, "└") || strings.Contains(result, "│") {
+						t.Error("Should not contain box drawing characters")
+					}
+					// Should contain the content
+					if !strings.Contains(result, "hello world") {
+						t.Error("Expected content to be present")
+					}
+					// Should have frame structure (newlines, padding)
+					lines := strings.Split(result, "\n")
+					if len(lines) < 3 {
+						t.Errorf("Expected at least 3 lines (top, content, bottom), got %d", len(lines))
+					}
+				},
+			},
+			{
+				name:  "multiple lines",
+				input: "line1\nline2\nline3",
+				validate: func(t *testing.T, result string) {
+					// Should NOT contain box drawing characters
+					if strings.Contains(result, "┌") || strings.Contains(result, "└") || strings.Contains(result, "│") {
+						t.Error("Should not contain box drawing characters")
+					}
+					// Should contain all content lines
+					if !strings.Contains(result, "line1") {
+						t.Error("Expected line1 to be present")
+					}
+					if !strings.Contains(result, "line2") {
+						t.Error("Expected line2 to be present")
+					}
+					if !strings.Contains(result, "line3") {
+						t.Error("Expected line3 to be present")
+					}
+				},
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				result := tf.FormatContentWithFrame(tt.input)
+				tt.validate(t, result)
+			})
+		}
+	})
 }

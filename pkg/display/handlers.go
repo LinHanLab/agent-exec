@@ -108,12 +108,12 @@ func formatRunPromptStarted(event events.Event, ctx *FormatContext) (string, err
 	// Format title
 	formattedTitle := fmt.Sprintf("%s%s%s", color, title, Reset)
 
-	// Format and wrap prompt content (plain text, so wrap it)
-	promptContent := ctx.TextFormatter.FormatWrappedContent(data.Prompt)
+	// Format prompt content with box border (only prompt gets border)
+	promptContent := ctx.TextFormatter.FormatContentWithFrame(data.Prompt, true)
 
 	output := formattedTitle + promptContent
 
-	// Add optional metadata (indented)
+	// Add optional metadata (indented, no frame)
 	if data.BaseURL != "" {
 		output += ctx.TextFormatter.IndentContent(fmt.Sprintf("🌐 Base URL: %s%s%s", BoldUnderline, data.BaseURL, Reset)) + "\n"
 	}
@@ -131,8 +131,12 @@ func formatClaudeAssistantMessage(event events.Event, ctx *FormatContext) (strin
 	data := event.Data.(events.AssistantMessageData)
 	color := GetColorForEventType(event.Type)
 	timeStr := fmt.Sprintf("[%s] ", ctx.TextFormatter.FormatTime())
-	message := fmt.Sprintf("💬 %s%s", timeStr, data.Text)
-	return fmt.Sprintf("%s%s%s", color, message, Reset), nil
+	title := fmt.Sprintf("💬 %sAssistant", timeStr)
+	coloredTitle := fmt.Sprintf("%s%s%s", color, title, Reset)
+	content := ctx.TextFormatter.FormatContentWithFrame(data.Text)
+	coloredContent := fmt.Sprintf("%s%s%s", color, content, Reset)
+
+	return coloredTitle + coloredContent, nil
 }
 
 func formatClaudeToolUse(event events.Event, ctx *FormatContext) (string, error) {
@@ -155,8 +159,8 @@ func formatClaudeToolUse(event events.Event, ctx *FormatContext) (string, error)
 	title := fmt.Sprintf("🔧 %sTool: %s", timeStr, data.Name)
 	coloredTitle := fmt.Sprintf("%s%s%s", color, title, Reset)
 
-	// Format and wrap content
-	jsonContent := ctx.TextFormatter.FormatContent(limitedJSON)
+	// Format JSON content with frame
+	jsonContent := ctx.TextFormatter.FormatContentWithFrame(limitedJSON)
 
 	return coloredTitle + jsonContent, nil
 }
@@ -171,8 +175,8 @@ func formatClaudeToolResult(event events.Event, ctx *FormatContext) (string, err
 	title := fmt.Sprintf("📋 %sTool Result", timeStr)
 	coloredTitle := fmt.Sprintf("%s%s%s", color, title, Reset)
 
-	// Format and wrap content
-	resultContent := ctx.TextFormatter.FormatContent(limitedContent)
+	// Format result content with frame
+	resultContent := ctx.TextFormatter.FormatContentWithFrame(limitedContent)
 
 	return coloredTitle + resultContent, nil
 }
@@ -192,7 +196,7 @@ func formatLoopStarted(event events.Event, ctx *FormatContext) (string, error) {
 	// Format title with reverse video
 	formattedTitle := ctx.TextFormatter.ApplyReverseVideo(title, color)
 
-	// Indent content
+	// Indent content (no frame for short metadata)
 	content := fmt.Sprintf("🔢 Iterations: %d", data.TotalIterations)
 	indentedContent := ctx.TextFormatter.IndentContent(content)
 
@@ -207,7 +211,7 @@ func formatEvolveStarted(event events.Event, ctx *FormatContext) (string, error)
 	// Format title with reverse video
 	formattedTitle := ctx.TextFormatter.ApplyReverseVideo(title, color)
 
-	// Indent content
+	// Indent content (no frame for short metadata)
 	content := fmt.Sprintf("🔢 Iterations: %d", data.TotalIterations)
 	indentedContent := ctx.TextFormatter.IndentContent(content)
 

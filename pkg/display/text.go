@@ -30,60 +30,6 @@ func GetTerminalWidth() int {
 	return width
 }
 
-// WrapText wraps text to fit within terminal width, respecting indentation
-// Only wraps at natural break points (spaces, commas, hyphens)
-func (tf *TextFormatter) WrapText(text string, indent string) string {
-	if text == "" {
-		return ""
-	}
-
-	lines := strings.Split(text, "\n")
-	wrapped := make([]string, 0, len(lines))
-
-	// Calculate available width for content (terminal width - indent length)
-	availableWidth := tf.terminalWidth - len(indent)
-	if availableWidth <= 0 {
-		availableWidth = DefaultTerminalWidth - len(indent)
-	}
-
-	for _, line := range lines {
-		// If line fits within available width, keep it as is
-		if len(line) <= availableWidth {
-			wrapped = append(wrapped, indent+line)
-			continue
-		}
-
-		// For long lines, try to wrap at natural break points
-		remaining := line
-		for len(remaining) > 0 {
-			if len(remaining) <= availableWidth {
-				wrapped = append(wrapped, indent+remaining)
-				break
-			}
-
-			// Find a good break point (space, comma, etc.)
-			breakPoint := -1
-			for i := availableWidth - 1; i > availableWidth/2 && i < len(remaining); i-- {
-				if remaining[i] == ' ' || remaining[i] == ',' || remaining[i] == '-' {
-					breakPoint = i + 1
-					break
-				}
-			}
-
-			// If no break point found, don't wrap (keep line as is to preserve content)
-			if breakPoint == -1 {
-				wrapped = append(wrapped, indent+remaining)
-				break
-			}
-
-			wrapped = append(wrapped, indent+remaining[:breakPoint])
-			remaining = strings.TrimLeft(remaining[breakPoint:], " ")
-		}
-	}
-
-	return strings.Join(wrapped, "\n")
-}
-
 // IndentContent adds ContentIndent prefix to each line of content
 func (tf *TextFormatter) IndentContent(content string) string {
 	if content == "" {
@@ -98,20 +44,177 @@ func (tf *TextFormatter) IndentContent(content string) string {
 	return strings.Join(indented, "\n")
 }
 
-// FormatContent formats content with indentation (no wrapping for JSON)
-func (tf *TextFormatter) FormatContent(content string) string {
+// FormatContentWithFrame wraps content in a frame with optional box drawing characters
+// By default (useBorder=false), uses whitespace for borders (invisible frame)
+// When useBorder=true, uses box drawing characters (┌─┐│└┘) for visible borders
+func (tf *TextFormatter) FormatContentWithFrame(content string, useBorder ...bool) string {
 	if content == "" {
 		return ""
 	}
-	return "\n" + tf.IndentContent(content) + "\n"
-}
 
-// FormatWrappedContent formats content with indentation and wrapping for plain text
-func (tf *TextFormatter) FormatWrappedContent(content string) string {
-	if content == "" {
-		return ""
+	// Determine if we should use box drawing characters (default: false)
+	drawBorder := false
+	if len(useBorder) > 0 {
+		drawBorder = useBorder[0]
 	}
-	return "\n" + tf.WrapText(content, ContentIndent) + "\n"
+
+	// Define border characters based on mode
+	var topLeft, topRight, bottomLeft, bottomRight, horizontal, vertical string
+	if drawBorder {
+		topLeft = "┌"
+		topRight = "┐"
+		bottomLeft = "└"
+		bottomRight = "┘"
+		horizontal = "─"
+		vertical = "│"
+	} else {
+		// Use whitespace for invisible borders
+		topLeft = " "
+		topRight = " "
+		bottomLeft = " "
+		bottomRight = " "
+		horizontal = " "
+		vertical = " "
+	}
+
+	// Split content into lines
+	lines := strings.Split(content, "\n")
+
+	// Calculate the maximum line length to determine frame width
+	maxLineLen := 0
+	for _, line := range lines {
+		if len(line) > maxLineLen {
+			maxLineLen = len(line)
+		}
+	}
+
+	// Set frame width based on content, with reasonable bounds
+	// Frame width is the content width (we'll add spaces on both sides separately)
+	// Min: 40 chars, Max: terminal width - indent - borders (│ │) - spaces ( content )
+	minFrameWidth := 40
+	maxFrameWidth := tf.terminalWidth - len(ContentIndent) - 4 - 2
+	if maxFrameWidth < minFrameWidth {
+		maxFrameWidth = minFrameWidth
+	}
+
+	// Frame width should fit the content (the dashes between ┌ and ┐)
+	// This is the content width plus 2 spaces (one on each side)
+	frameWidth := maxLineLen + 2
+	if frameWidth < minFrameWidth {
+		frameWidth = minFrameWidth
+	}
+	if frameWidth > maxFrameWidth {
+		frameWidth = maxFrameWidth
+	}
+
+	// Content width is frame width minus the 2 spaces
+	contentWidth := frameWidth - 2
+
+	// Build the frame
+	var result strings.Builder
+
+	// Top border (with gray color)
+	result.WriteString("\n")
+	result.WriteString(ContentIndent)
+	result.WriteString(Gray)
+	result.WriteString(topLeft)
+	result.WriteString(strings.Repeat(horizontal, frameWidth))
+	result.WriteString(topRight)
+	result.WriteString(Reset)
+	result.WriteString("\n")
+
+	// Content lines
+	for _, line := range lines {
+		// Handle lines that are too long by wrapping them
+		if len(line) > contentWidth {
+			// Wrap long lines
+			remaining := line
+			for len(remaining) > 0 {
+				if len(remaining) <= contentWidth {
+					result.WriteString(ContentIndent)
+					result.WriteString(Gray)
+					result.WriteString(vertical)
+					result.WriteString(Reset)
+					result.WriteString(" ")
+					result.WriteString(remaining)
+					result.WriteString(strings.Repeat(" ", contentWidth-len(remaining)))
+					result.WriteString(" ")
+					result.WriteString(Gray)
+					result.WriteString(vertical)
+					result.WriteString(Reset)
+					result.WriteString("\n")
+					break
+				}
+
+				// Find break point (only at natural boundaries)
+				breakPoint := -1
+				for i := contentWidth - 1; i > contentWidth/2 && i < len(remaining); i-- {
+					if remaining[i] == ' ' || remaining[i] == ',' || remaining[i] == '-' {
+						breakPoint = i + 1
+						break
+					}
+				}
+
+				// If no natural break point found, don't wrap - keep the line as-is
+				if breakPoint == -1 {
+					result.WriteString(ContentIndent)
+					result.WriteString(Gray)
+					result.WriteString(vertical)
+					result.WriteString(Reset)
+					result.WriteString(" ")
+					result.WriteString(remaining)
+					result.WriteString(strings.Repeat(" ", max(0, contentWidth-len(remaining))))
+					result.WriteString(" ")
+					result.WriteString(Gray)
+					result.WriteString(vertical)
+					result.WriteString(Reset)
+					result.WriteString("\n")
+					break
+				}
+
+				chunk := remaining[:breakPoint]
+				result.WriteString(ContentIndent)
+				result.WriteString(Gray)
+				result.WriteString(vertical)
+				result.WriteString(Reset)
+				result.WriteString(" ")
+				result.WriteString(chunk)
+				result.WriteString(strings.Repeat(" ", contentWidth-len(chunk)))
+				result.WriteString(" ")
+				result.WriteString(Gray)
+				result.WriteString(vertical)
+				result.WriteString(Reset)
+				result.WriteString("\n")
+
+				remaining = strings.TrimLeft(remaining[breakPoint:], " ")
+			}
+		} else {
+			// Line fits within frame
+			result.WriteString(ContentIndent)
+			result.WriteString(Gray)
+			result.WriteString(vertical)
+			result.WriteString(Reset)
+			result.WriteString(" ")
+			result.WriteString(line)
+			result.WriteString(strings.Repeat(" ", contentWidth-len(line)))
+			result.WriteString(" ")
+			result.WriteString(Gray)
+			result.WriteString(vertical)
+			result.WriteString(Reset)
+			result.WriteString("\n")
+		}
+	}
+
+	// Bottom border (with gray color)
+	result.WriteString(ContentIndent)
+	result.WriteString(Gray)
+	result.WriteString(bottomLeft)
+	result.WriteString(strings.Repeat(horizontal, frameWidth))
+	result.WriteString(bottomRight)
+	result.WriteString(Reset)
+	result.WriteString("\n")
+
+	return result.String()
 }
 
 // FormatDuration formats duration in human-readable format

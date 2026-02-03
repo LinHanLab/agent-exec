@@ -10,6 +10,7 @@ const (
 	Yellow    = "\033[33m"
 	Red       = "\033[31m"
 	Magenta   = "\033[35m"
+	Gray      = "\033[2m" // Dim/faint text, works for both light and dark modes
 
 	// Text effects
 	ReverseVideo = "\033[7m"
