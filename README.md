@@ -17,63 +17,7 @@ go install github.com/LinHanLab/agent-exec/cmd/agent-exec@latest
 Tournament-style code evolution using git branches. Creates competing implementations, uses AI comparison to select winners, and iteratively improves through elimination rounds:
 
 ```
-┌─────────────────────────────────────────────────────┐
-│  Create Branch A: Run Initial Plan                  │
-└─────────────────┬───────────────────────────────────┘
-                  │
-                  ▼
-          ┌───────────────┐
-    ┌────►│  Round Start  │
-    │     └───────┬───────┘
-    │             │
-    │             ▼
-    │     ┌───────────────────────────────┐
-    │     │  Create Challenger Branch B   │
-    │     │  From Current Winner          │
-    │     └───────┬───────────────────────┘
-    │             │
-    │             ▼
-    │     ┌───────────────────────────────┐
-    │     │  Run Improvement Prompt on B  │
-    │     └───────┬───────────────────────┘
-    │             │
-    │             ▼
-    │     ┌───────────────────────────────┐
-    │     │  Switch to Original Branch    │
-    │     │  Run Comparison Prompt        │
-    │     │  (A vs B - which is worse?)   │
-    │     └───────┬───────────────────────┘
-    │             │
-    │             ▼
-    │     ┌────────────────┐
-    │     │  Parse Result  │
-    │     │  Identify Loser│
-    │     └───────┬────────┘
-    │             │
-    │             ▼
-    │     ┌───────────────────────────────┐
-    │     │  Delete Loser Branch          │
-    │     │  Winner Becomes Current       │
-    │     └───────┬───────────────────────┘
-    │             │
-    │             ▼
-    │     ┌───────────────┐
-    │     │  Next Round?  ├──Yes──┐
-    │     └───────┬───────┘       │
-    │             │ No            │
-    └─────────────┘               │
-                  │               │
-                  ▼               │
-          ┌───────────────┐       │
-          │  Final Winner │       │
-          └───────────────┘       │
-                                  │
-                  ┌───────────────┘
-                  │
-                  ▼
-          ┌───────────────┐
-          │  Sleep (opt)  │
-          └───────────────┘
+todo
 ```
 
 ### Loop Command
@@ -81,29 +25,7 @@ Tournament-style code evolution using git branches. Creates competing implementa
 Simple iterative execution of Claude Code prompts:
 
 ```
-┌──────────────────────────────────────────┐
-│  Start Loop (N iterations)               │
-└──────────────┬───────────────────────────┘
-               │
-               ▼
-       ┌───────────────┐
-       │  Run Prompt   │◄─────┐
-       └───────┬───────┘      │
-               │              │
-               ▼              │
-       ┌───────────────┐      │
-       │  Sleep (opt)  │      │
-       └───────┬───────┘      │
-               │              │
-               ▼              │
-       ┌───────────────┐      │
-       │  Next Round?  ├──Yes─┘
-       └───────┬───────┘
-               │ No
-               ▼
-       ┌───────────────┐
-       │   Complete    │
-       └───────────────┘
+todo
 ```
 
 
