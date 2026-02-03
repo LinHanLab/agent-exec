@@ -35,11 +35,6 @@ func TestConsoleFormatter_RunPromptStarted(t *testing.T) {
 		t.Error("Expected output to contain 🚀 emoji")
 	}
 
-	// Verify title formatting with dashes
-	if !strings.Contains(stripped, "---") {
-		t.Error("Expected output to contain --- separator")
-	}
-
 	// Verify prompt is in code block
 	if !strings.Contains(stripped, "```") {
 		t.Error("Expected output to contain code block markers")
@@ -59,12 +54,9 @@ func TestConsoleFormatter_RunPromptStarted(t *testing.T) {
 		t.Error("Expected output to contain base URL")
 	}
 
-	// Verify color code is BoldCyan with reverse video
-	if !strings.HasPrefix(output, BoldCyan) {
-		t.Error("Expected output to start with BoldCyan color code")
-	}
-	if !strings.Contains(output, ReverseVideo) {
-		t.Error("Expected output to contain reverse video code")
+	// Verify color code is BoldCyan (no reverse video for this event)
+	if !strings.Contains(output, BoldCyan) {
+		t.Error("Expected output to contain BoldCyan color code")
 	}
 
 	// Verify content is indented with 4 spaces
@@ -132,11 +124,6 @@ func TestConsoleFormatter_ToolUse(t *testing.T) {
 		t.Error("Expected output to contain param2")
 	}
 
-	// Verify reverse video is applied (no color prefix for tool use, but reverse video should be present)
-	if !strings.Contains(output, ReverseVideo) {
-		t.Error("Expected output to contain reverse video code")
-	}
-
 	// Verify content is indented with 4 spaces
 	lines := strings.Split(stripped, "\n")
 	foundIndentedContent := false
@@ -173,11 +160,6 @@ func TestConsoleFormatter_EvolveStarted(t *testing.T) {
 	// Verify emoji is present
 	if !strings.Contains(stripped, "🧬") {
 		t.Error("Expected output to contain 🧬 emoji")
-	}
-
-	// Verify big title formatting with equals
-	if !strings.Contains(stripped, "===") {
-		t.Error("Expected output to contain === separator for big title")
 	}
 
 	// Verify iterations
@@ -236,12 +218,9 @@ func TestConsoleFormatter_ExecutionResult(t *testing.T) {
 		t.Error("Expected output to contain formatted duration")
 	}
 
-	// Verify color code is BoldGreen with reverse video
+	// Verify color code is BoldGreen (no reverse video for this event)
 	if !strings.Contains(output, BoldGreen) {
 		t.Error("Expected output to contain BoldGreen color code")
-	}
-	if !strings.Contains(output, ReverseVideo) {
-		t.Error("Expected output to contain reverse video code")
 	}
 }
 
