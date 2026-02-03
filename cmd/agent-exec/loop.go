@@ -22,9 +22,15 @@ var (
 
 var loopCmd = &cobra.Command{
 	Use:   "loop <prompt>",
-	Short: "",
-	Long:  "",
-	Args:  cobra.ExactArgs(1),
+	Short: "Execute Claude Code prompts in a loop with optional iterations and sleep intervals",
+	Long: `Execute Claude Code prompts in a loop with optional iterations and sleep intervals.
+
+Runs the specified prompt N times, useful for iterative refinement and testing.
+The loop can be interrupted gracefully with Ctrl+C.
+
+Example:
+  agent-exec loop "refactor the code for better readability" -n 5 -s 30s`,
+	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		prompt := args[0]
 
@@ -63,9 +69,9 @@ var loopCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(loopCmd)
 
-	loopCmd.Flags().IntVarP(&iterations, "iterations", "n", 1, "")
-	loopCmd.Flags().DurationVarP(&sleep, "sleep", "s", 0, "")
-	loopCmd.Flags().StringVar(&systemPrompt, "system-prompt", "", "")
-	loopCmd.Flags().StringVar(&appendSystemPrompt, "append-system-prompt", "", "")
-	loopCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "")
+	loopCmd.Flags().IntVarP(&iterations, "iterations", "n", 1, "Number of times to execute the prompt")
+	loopCmd.Flags().DurationVarP(&sleep, "sleep", "s", 0, "Sleep duration between iterations (e.g., 30s, 1m)")
+	loopCmd.Flags().StringVar(&systemPrompt, "system-prompt", "", "Replace entire system prompt sent to Claude")
+	loopCmd.Flags().StringVar(&appendSystemPrompt, "append-system-prompt", "", "Append additional instructions to default system prompt")
+	loopCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Show verbose output including all Claude events")
 }

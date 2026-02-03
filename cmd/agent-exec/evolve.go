@@ -33,9 +33,19 @@ var (
 
 var evolveCmd = &cobra.Command{
 	Use:   "evolve <prompt>",
-	Short: "",
-	Long:  "",
-	Args:  cobra.ExactArgs(1),
+	Short: "Tournament-style code evolution using competing git branches",
+	Long: `Tournament-style code evolution using competing git branches.
+
+Creates an initial implementation, then iteratively improves by:
+1. Creating a challenger branch with improvements
+2. Using AI comparison to select the better implementation
+3. Eliminating the worse branch and continuing with the winner
+
+The final winning branch contains the best evolved implementation.
+
+Example:
+  agent-exec evolve "implement user authentication" -n 5 -s 1m`,
+	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		plan := args[0]
 
@@ -83,21 +93,21 @@ var evolveCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(evolveCmd)
 
-	evolveCmd.Flags().StringVarP(&improvePrompt, "improve", "i", "improve the code quality and fix any issues", "")
-	evolveCmd.Flags().StringVarP(&comparePrompt, "compare", "c", "compare these two implementations and determine which is worse", "")
-	evolveCmd.Flags().IntVarP(&evolveIters, "iterations", "n", 3, "")
-	evolveCmd.Flags().DurationVarP(&evolveSleep, "sleep", "s", 0, "")
-	evolveCmd.Flags().IntVar(&compareErrorRetries, "compare-error-retries", 3, "")
+	evolveCmd.Flags().StringVarP(&improvePrompt, "improve", "i", "improve the code quality and fix any issues", "Prompt for creating improved challenger implementations")
+	evolveCmd.Flags().StringVarP(&comparePrompt, "compare", "c", "compare these two implementations and determine which is worse", "Prompt for comparing and selecting worse implementation")
+	evolveCmd.Flags().IntVarP(&evolveIters, "iterations", "n", 3, "Number of evolution rounds to run")
+	evolveCmd.Flags().DurationVarP(&evolveSleep, "sleep", "s", 0, "Sleep duration between evolution rounds (e.g., 30s, 1m)")
+	evolveCmd.Flags().IntVar(&compareErrorRetries, "compare-error-retries", 3, "Retry attempts when comparison branch parsing fails")
 
-	evolveCmd.Flags().StringVar(&planSystemPrompt, "system-prompt", "", "")
-	evolveCmd.Flags().StringVar(&planAppendSystemPrompt, "append-system-prompt", "", "")
+	evolveCmd.Flags().StringVar(&planSystemPrompt, "system-prompt", "", "Replace entire system prompt for initial plan step")
+	evolveCmd.Flags().StringVar(&planAppendSystemPrompt, "append-system-prompt", "", "Append to default system prompt for initial plan step")
 
-	evolveCmd.Flags().StringVar(&improveSystemPrompt, "improve-system-prompt", "", "")
-	evolveCmd.Flags().StringVar(&improveAppendSystemPrompt, "append-improve-system-prompt", "", "")
+	evolveCmd.Flags().StringVar(&improveSystemPrompt, "improve-system-prompt", "", "Replace entire system prompt for improvement steps")
+	evolveCmd.Flags().StringVar(&improveAppendSystemPrompt, "append-improve-system-prompt", "", "Append to default system prompt for improvement steps")
 
-	evolveCmd.Flags().StringVar(&compareSystemPrompt, "compare-system-prompt", "", "")
-	evolveCmd.Flags().StringVar(&compareAppendSystemPrompt, "append-compare-system-prompt", "", "")
+	evolveCmd.Flags().StringVar(&compareSystemPrompt, "compare-system-prompt", "", "Replace entire system prompt for comparison steps")
+	evolveCmd.Flags().StringVar(&compareAppendSystemPrompt, "append-compare-system-prompt", "", "Append to default system prompt for comparison steps")
 
-	evolveCmd.Flags().BoolVarP(&evolveVerbose, "verbose", "v", false, "")
-	evolveCmd.Flags().BoolVar(&debugKeepBranches, "debug-keep-branches", false, "")
+	evolveCmd.Flags().BoolVarP(&evolveVerbose, "verbose", "v", false, "Show verbose output including all Claude events")
+	evolveCmd.Flags().BoolVar(&debugKeepBranches, "debug-keep-branches", false, "Keep all branches for debugging instead of deleting losers")
 }
