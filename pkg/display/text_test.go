@@ -218,3 +218,53 @@ func TestTextFormatter_FormatContentWithFrame(t *testing.T) {
 		}
 	})
 }
+
+func TestTextFormatter_FormatContentWithFrameAndColor(t *testing.T) {
+	tf := NewTextFormatter()
+
+	t.Run("color preserved across wrapped lines", func(t *testing.T) {
+		// Create a long line that will be wrapped
+		longText := "I'll help you update the scripts to use the new agent-exec command structure. Let me start by reading the help message for agent-exec to understand the new command structure and available options."
+		color := Magenta
+
+		result := tf.FormatContentWithFrameAndColor(longText, color)
+
+		// Count occurrences of the color code and reset code
+		colorCount := strings.Count(result, color)
+		resetCount := strings.Count(result, Reset)
+
+		// Each content line should have color applied
+		// The exact count depends on wrapping, but there should be multiple occurrences
+		if colorCount < 2 {
+			t.Errorf("Expected color code to appear at least twice (for wrapped lines), got %d", colorCount)
+		}
+
+		// Each colored segment should have a corresponding reset
+		// We subtract gray color/reset pairs for borders
+		grayCount := strings.Count(result, Gray)
+		contentColorCount := colorCount
+		contentResetCount := resetCount - grayCount
+
+		if contentResetCount < contentColorCount {
+			t.Errorf("Expected at least as many reset codes as color codes, got color=%d reset=%d", contentColorCount, contentResetCount)
+		}
+
+		// Verify the original text is still present (without color codes)
+		if !strings.Contains(result, "I'll help you update") {
+			t.Error("Expected original text to be present")
+		}
+		if !strings.Contains(result, "start by reading") {
+			t.Error("Expected wrapped portion to be present")
+		}
+	})
+
+	t.Run("color not applied when empty", func(t *testing.T) {
+		text := "hello world"
+		result := tf.FormatContentWithFrameAndColor(text, "")
+
+		// Should not contain any Magenta color codes
+		if strings.Contains(result, Magenta) {
+			t.Error("Should not contain color when color parameter is empty")
+		}
+	})
+}

@@ -47,7 +47,13 @@ func (tf *TextFormatter) IndentContent(content string) string {
 // FormatContentWithFrame wraps content in a frame with optional box drawing characters
 // By default (useBorder=false), uses whitespace for borders (invisible frame)
 // When useBorder=true, uses box drawing characters (┌─┐│└┘) for visible borders
+// Optional color parameter can be provided to colorize the content
 func (tf *TextFormatter) FormatContentWithFrame(content string, useBorder ...bool) string {
+	return tf.FormatContentWithFrameAndColor(content, "", useBorder...)
+}
+
+// FormatContentWithFrameAndColor wraps content in a frame with optional color
+func (tf *TextFormatter) FormatContentWithFrameAndColor(content string, color string, useBorder ...bool) string {
 	if content == "" {
 		return ""
 	}
@@ -136,7 +142,13 @@ func (tf *TextFormatter) FormatContentWithFrame(content string, useBorder ...boo
 					result.WriteString(vertical)
 					result.WriteString(Reset)
 					result.WriteString(" ")
+					if color != "" {
+						result.WriteString(color)
+					}
 					result.WriteString(remaining)
+					if color != "" {
+						result.WriteString(Reset)
+					}
 					result.WriteString(strings.Repeat(" ", contentWidth-len(remaining)))
 					result.WriteString(" ")
 					result.WriteString(Gray)
@@ -162,7 +174,13 @@ func (tf *TextFormatter) FormatContentWithFrame(content string, useBorder ...boo
 					result.WriteString(vertical)
 					result.WriteString(Reset)
 					result.WriteString(" ")
+					if color != "" {
+						result.WriteString(color)
+					}
 					result.WriteString(remaining)
+					if color != "" {
+						result.WriteString(Reset)
+					}
 					result.WriteString(strings.Repeat(" ", max(0, contentWidth-len(remaining))))
 					result.WriteString(" ")
 					result.WriteString(Gray)
@@ -178,7 +196,13 @@ func (tf *TextFormatter) FormatContentWithFrame(content string, useBorder ...boo
 				result.WriteString(vertical)
 				result.WriteString(Reset)
 				result.WriteString(" ")
+				if color != "" {
+					result.WriteString(color)
+				}
 				result.WriteString(chunk)
+				if color != "" {
+					result.WriteString(Reset)
+				}
 				result.WriteString(strings.Repeat(" ", contentWidth-len(chunk)))
 				result.WriteString(" ")
 				result.WriteString(Gray)
@@ -195,7 +219,13 @@ func (tf *TextFormatter) FormatContentWithFrame(content string, useBorder ...boo
 			result.WriteString(vertical)
 			result.WriteString(Reset)
 			result.WriteString(" ")
+			if color != "" {
+				result.WriteString(color)
+			}
 			result.WriteString(line)
+			if color != "" {
+				result.WriteString(Reset)
+			}
 			result.WriteString(strings.Repeat(" ", contentWidth-len(line)))
 			result.WriteString(" ")
 			result.WriteString(Gray)
