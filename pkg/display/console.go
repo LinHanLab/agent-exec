@@ -4,16 +4,22 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/LinHanLab/agent-exec/pkg/events"
+	"golang.org/x/term"
 )
 
 const (
 	// Content limits for non-verbose mode
 	MaxCodeBlockLines = 10
 	MaxCodeBlockChars = 5000
+	// Default terminal width if detection fails
+	DefaultTerminalWidth = 80
+	// Indentation for content blocks
+	ContentIndent = "    "
 )
 
 // ToolInputFilter defines which fields to hide for specific tools
@@ -36,48 +42,103 @@ var defaultToolInputFilters = []ToolInputFilter{
 
 // JSONFormatter formats events as human-readable text with color highlighting
 type JSONFormatter struct {
-	writer  io.Writer
-	verbose bool
+	writer        io.Writer
+	verbose       bool
+	terminalWidth int
 }
 
 // NewConsoleFormatter creates a new JSONFormatter
 func NewConsoleFormatter(writer io.Writer, verbose bool) *JSONFormatter {
 	return &JSONFormatter{
-		writer:  writer,
-		verbose: verbose,
+		writer:        writer,
+		verbose:       verbose,
+		terminalWidth: getTerminalWidth(),
 	}
 }
 
-// getSpacingBefore returns the number of blank lines to add before an event
+// getTerminalWidth returns the current terminal width, or default if detection fails
+func getTerminalWidth() int {
+	width, _, err := term.GetSize(int(os.Stdout.Fd()))
+	if err != nil || width <= 0 {
+		return DefaultTerminalWidth
+	}
+	return width
+}
+
+// getSpacingBefore returns a single blank line before each event
 func (f *JSONFormatter) getSpacingBefore(eventType events.EventType) string {
-	switch eventType {
-	// Major events: 2 blank lines
-	case events.EventLoopStarted,
-		events.EventEvolveStarted,
-		events.EventRoundStarted:
-		return "\n\n"
-	// Regular events: 1 blank line
-	case events.EventIterationStarted,
-		events.EventIterationCompleted,
-		events.EventIterationFailed,
-		events.EventLoopCompleted,
-		events.EventLoopInterrupted,
-		events.EventEvolveCompleted,
-		events.EventEvolveInterrupted,
-		events.EventRunPromptStarted:
-		return "\n"
-	// Inline events: no extra spacing
-	default:
+	// Always use single blank line between events
+	return "\n"
+}
+
+// wrapText wraps text to fit within terminal width, respecting indentation
+// Only wraps at natural break points (spaces, commas, hyphens)
+func (f *JSONFormatter) wrapText(text string, indent string) string {
+	if text == "" {
 		return ""
 	}
+
+	lines := strings.Split(text, "\n")
+	wrapped := make([]string, 0, len(lines))
+
+	// Calculate available width for content (terminal width - indent length)
+	availableWidth := f.terminalWidth - len(indent)
+	if availableWidth <= 0 {
+		availableWidth = DefaultTerminalWidth - len(indent)
+	}
+
+	for _, line := range lines {
+		// If line fits within available width, keep it as is
+		if len(line) <= availableWidth {
+			wrapped = append(wrapped, indent+line)
+			continue
+		}
+
+		// For long lines, try to wrap at natural break points
+		remaining := line
+		for len(remaining) > 0 {
+			if len(remaining) <= availableWidth {
+				wrapped = append(wrapped, indent+remaining)
+				break
+			}
+
+			// Find a good break point (space, comma, etc.)
+			breakPoint := -1
+			for i := availableWidth - 1; i > availableWidth/2 && i < len(remaining); i-- {
+				if remaining[i] == ' ' || remaining[i] == ',' || remaining[i] == '-' {
+					breakPoint = i + 1
+					break
+				}
+			}
+
+			// If no break point found, don't wrap (keep line as is to preserve content)
+			if breakPoint == -1 {
+				wrapped = append(wrapped, indent+remaining)
+				break
+			}
+
+			wrapped = append(wrapped, indent+remaining[:breakPoint])
+			remaining = strings.TrimLeft(remaining[breakPoint:], " ")
+		}
+	}
+
+	return strings.Join(wrapped, "\n")
 }
 
-// formatCodeBlock wraps content in ``` with optional language
-func (f *JSONFormatter) formatCodeBlock(content string, language string) string {
-	if language != "" {
-		return fmt.Sprintf("\n```%s\n%s\n```\n", language, content)
+// formatContent formats content with indentation (no wrapping for JSON)
+func (f *JSONFormatter) formatContent(content string) string {
+	if content == "" {
+		return ""
 	}
-	return fmt.Sprintf("\n```\n%s\n```\n", content)
+	return "\n" + f.indentContent(content) + "\n"
+}
+
+// formatWrappedContent formats content with indentation and wrapping for plain text
+func (f *JSONFormatter) formatWrappedContent(content string) string {
+	if content == "" {
+		return ""
+	}
+	return "\n" + f.wrapText(content, ContentIndent) + "\n"
 }
 
 // formatPrettyJSON marshals data to indented JSON
@@ -163,7 +224,7 @@ func (f *JSONFormatter) applyReverseVideo(text string, color string) string {
 	return fmt.Sprintf("%s%s%s%s", color, ReverseVideo, text, Reset)
 }
 
-// indentContent adds 4-space prefix to each line of content
+// indentContent adds ContentIndent prefix to each line of content
 func (f *JSONFormatter) indentContent(content string) string {
 	if content == "" {
 		return content
@@ -172,7 +233,7 @@ func (f *JSONFormatter) indentContent(content string) string {
 	lines := strings.Split(content, "\n")
 	indented := make([]string, len(lines))
 	for i, line := range lines {
-		indented[i] = "    " + line
+		indented[i] = ContentIndent + line
 	}
 	return strings.Join(indented, "\n")
 }
@@ -182,31 +243,32 @@ func (f *JSONFormatter) Format(event events.Event) error {
 	var output string
 	timeStr := fmt.Sprintf("[%s] ", f.formatTime())
 
+	// Add spacing before event
+	spacing := f.getSpacingBefore(event.Type)
+
 	switch event.Type {
 	case events.EventRunPromptStarted:
 		data := event.Data.(events.RunPromptStartedData)
 		color := f.getColorForEventType(event.Type)
 		title := "🚀 Run Prompt Started"
 
-		// Add spacing and format title
-		spacing := f.getSpacingBefore(event.Type)
-		formattedTitle := fmt.Sprintf("%s%s%s%s", spacing, color, title, Reset)
+		// Format title
+		formattedTitle := fmt.Sprintf("%s%s%s", color, title, Reset)
 
-		// Format and indent code block
-		codeBlock := f.formatCodeBlock(data.Prompt, "")
-		indentedCodeBlock := f.indentContent(codeBlock)
+		// Format and wrap prompt content (plain text, so wrap it)
+		promptContent := f.formatWrappedContent(data.Prompt)
 
-		output = formattedTitle + "\n" + indentedCodeBlock
+		output = formattedTitle + promptContent
 
 		// Add optional metadata (indented)
 		if data.BaseURL != "" {
-			output += "\n" + f.indentContent(fmt.Sprintf("🌐 Base URL: %s", data.BaseURL))
+			output += f.indentContent(fmt.Sprintf("🌐 Base URL: %s", data.BaseURL)) + "\n"
 		}
 		if data.Cwd != "" {
-			output += "\n" + f.indentContent(fmt.Sprintf("📁 Working Directory: %s", data.Cwd))
+			output += f.indentContent(fmt.Sprintf("📁 Working Directory: %s", data.Cwd)) + "\n"
 		}
 		if data.FileList != "" {
-			output += "\n" + f.indentContent(fmt.Sprintf("📄 File List: %s", data.FileList))
+			output += f.indentContent(fmt.Sprintf("📄 File List: %s", data.FileList)) + "\n"
 		}
 
 	// Claude streaming events
@@ -231,30 +293,28 @@ func (f *JSONFormatter) Format(event events.Event) error {
 		// Apply content limiting
 		limitedJSON := f.limitCodeBlock(prettyJSON)
 
-		// Format title with just color (no reverse video)
+		// Format title
 		title := fmt.Sprintf("🔧 %sTool: %s", timeStr, data.Name)
 		coloredTitle := fmt.Sprintf("%s%s%s", color, title, Reset)
 
-		// Format and indent code block
-		codeBlock := f.formatCodeBlock(limitedJSON, "json")
-		indentedCodeBlock := f.indentContent(codeBlock)
+		// Format and wrap content
+		jsonContent := f.formatContent(limitedJSON)
 
-		output = coloredTitle + "\n" + indentedCodeBlock
+		output = coloredTitle + jsonContent
 
 	case events.EventClaudeToolResult:
 		data := event.Data.(events.ToolResultData)
 		color := f.getColorForEventType(event.Type)
 		limitedContent := f.limitCodeBlock(data.Content)
 
-		// Format title with just color (no reverse video)
+		// Format title
 		title := fmt.Sprintf("📋 %sTool Result", timeStr)
 		coloredTitle := fmt.Sprintf("%s%s%s", color, title, Reset)
 
-		// Format and indent code block
-		codeBlock := f.formatCodeBlock(limitedContent, "")
-		indentedCodeBlock := f.indentContent(codeBlock)
+		// Format and wrap content
+		resultContent := f.formatContent(limitedContent)
 
-		output = coloredTitle + "\n" + indentedCodeBlock
+		output = coloredTitle + resultContent
 
 	case events.EventClaudeExecutionResult:
 		data := event.Data.(events.ExecutionResultData)
@@ -268,9 +328,8 @@ func (f *JSONFormatter) Format(event events.Event) error {
 		color := f.getColorForEventType(event.Type)
 		title := "🔄 Loop Started"
 
-		// Add spacing and format title with reverse video
-		spacing := f.getSpacingBefore(event.Type)
-		formattedTitle := f.applyReverseVideo(spacing+title, color)
+		// Format title with reverse video
+		formattedTitle := f.applyReverseVideo(title, color)
 
 		// Indent content
 		content := fmt.Sprintf("🔢 Iterations: %d", data.TotalIterations)
@@ -283,9 +342,8 @@ func (f *JSONFormatter) Format(event events.Event) error {
 		color := f.getColorForEventType(event.Type)
 		title := "🧬 Evolution Started"
 
-		// Add spacing and format title with reverse video
-		spacing := f.getSpacingBefore(event.Type)
-		formattedTitle := f.applyReverseVideo(spacing+title, color)
+		// Format title with reverse video
+		formattedTitle := f.applyReverseVideo(title, color)
 
 		// Indent content
 		content := fmt.Sprintf("🔢 Iterations: %d", data.TotalIterations)
@@ -298,24 +356,21 @@ func (f *JSONFormatter) Format(event events.Event) error {
 		color := f.getColorForEventType(event.Type)
 		title := fmt.Sprintf("🎯 Round %d/%d", data.Round, data.Total)
 
-		// Add spacing and format title with reverse video
-		spacing := f.getSpacingBefore(event.Type)
-		output = f.applyReverseVideo(spacing+title, color)
+		// Format title with reverse video
+		output = f.applyReverseVideo(title, color)
 
 	// Loop execution events
 	case events.EventIterationStarted:
 		data := event.Data.(events.IterationStartedData)
 		color := f.getColorForEventType(event.Type)
 		message := fmt.Sprintf("▶️ %sIteration %d/%d started", timeStr, data.Current, data.Total)
-		spacing := f.getSpacingBefore(event.Type)
-		output = f.applyReverseVideo(spacing+message, color)
+		output = f.applyReverseVideo(message, color)
 
 	case events.EventIterationCompleted:
 		data := event.Data.(events.IterationCompletedData)
 		color := f.getColorForEventType(event.Type)
 		message := fmt.Sprintf("✅ %sIteration %d/%d completed in %s", timeStr, data.Current, data.Total, f.formatDuration(data.Duration))
-		spacing := f.getSpacingBefore(event.Type)
-		output = f.applyReverseVideo(spacing+message, color)
+		output = f.applyReverseVideo(message, color)
 
 	case events.EventIterationFailed:
 		data := event.Data.(events.IterationFailedData)
@@ -325,23 +380,20 @@ func (f *JSONFormatter) Format(event events.Event) error {
 			errMsg = data.Error.Error()
 		}
 		message := fmt.Sprintf("❌ %sIteration %d/%d failed: %s", timeStr, data.Current, data.Total, errMsg)
-		spacing := f.getSpacingBefore(event.Type)
-		output = f.applyReverseVideo(spacing+message, color)
+		output = f.applyReverseVideo(message, color)
 
 	case events.EventLoopCompleted:
 		data := event.Data.(events.LoopCompletedData)
 		color := f.getColorForEventType(event.Type)
 		message := fmt.Sprintf("🏁 Loop completed: %d/%d successful, %d failed (Total: %s)",
 			data.SuccessfulIterations, data.TotalIterations, data.FailedIterations, f.formatDuration(data.TotalDuration))
-		spacing := f.getSpacingBefore(event.Type)
-		output = f.applyReverseVideo(spacing+message, color)
+		output = f.applyReverseVideo(message, color)
 
 	case events.EventLoopInterrupted:
 		data := event.Data.(events.LoopInterruptedData)
 		color := f.getColorForEventType(event.Type)
 		message := fmt.Sprintf("⚠️ Loop interrupted: %d/%d iterations completed", data.CompletedIterations, data.TotalIterations)
-		spacing := f.getSpacingBefore(event.Type)
-		output = f.applyReverseVideo(spacing+message, color)
+		output = f.applyReverseVideo(message, color)
 
 	case events.EventSleepStarted:
 		data := event.Data.(events.SleepStartedData)
@@ -379,15 +431,13 @@ func (f *JSONFormatter) Format(event events.Event) error {
 		color := f.getColorForEventType(event.Type)
 		message := fmt.Sprintf("🎉 Evolution completed, final branch: %s (total duration: %s)",
 			data.FinalBranch, f.formatDuration(data.TotalDuration))
-		spacing := f.getSpacingBefore(event.Type)
-		output = f.applyReverseVideo(spacing+message, color)
+		output = f.applyReverseVideo(message, color)
 
 	case events.EventEvolveInterrupted:
 		data := event.Data.(events.EvolveInterruptedData)
 		color := f.getColorForEventType(event.Type)
 		message := fmt.Sprintf("🛑 Evolution interrupted: %d/%d rounds completed", data.CompletedRounds, data.TotalRounds)
-		spacing := f.getSpacingBefore(event.Type)
-		output = f.applyReverseVideo(spacing+message, color)
+		output = f.applyReverseVideo(message, color)
 
 	// Git operations
 	case events.EventGitBranchCreated:
@@ -421,8 +471,14 @@ func (f *JSONFormatter) Format(event events.Event) error {
 		return fmt.Errorf("unknown event type: %s", event.Type)
 	}
 
+	// Write spacing first, then output
+	_, err := fmt.Fprint(f.writer, spacing)
+	if err != nil {
+		return fmt.Errorf("failed to write spacing to console: %w", err)
+	}
+
 	// Write output (color already applied within each case)
-	_, err := fmt.Fprintf(f.writer, "%s\n", output)
+	_, err = fmt.Fprintf(f.writer, "%s\n", output)
 	if err != nil {
 		return fmt.Errorf("failed to write to console: %w", err)
 	}

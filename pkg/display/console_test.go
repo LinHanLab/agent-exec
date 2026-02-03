@@ -35,11 +35,6 @@ func TestConsoleFormatter_RunPromptStarted(t *testing.T) {
 		t.Error("Expected output to contain 🚀 emoji")
 	}
 
-	// Verify prompt is in code block
-	if !strings.Contains(stripped, "```") {
-		t.Error("Expected output to contain code block markers")
-	}
-
 	// Verify prompt content
 	if !strings.Contains(stripped, "test prompt") {
 		t.Error("Expected output to contain prompt text")
@@ -63,13 +58,13 @@ func TestConsoleFormatter_RunPromptStarted(t *testing.T) {
 	lines := strings.Split(stripped, "\n")
 	foundIndentedContent := false
 	for _, line := range lines {
-		if strings.HasPrefix(line, "    ") && strings.Contains(line, "```") {
+		if strings.HasPrefix(line, "    ") && strings.Contains(line, "test prompt") {
 			foundIndentedContent = true
 			break
 		}
 	}
 	if !foundIndentedContent {
-		t.Error("Expected code block to be indented with 4 spaces")
+		t.Error("Expected prompt content to be indented with 4 spaces")
 	}
 }
 
@@ -106,11 +101,6 @@ func TestConsoleFormatter_ToolUse(t *testing.T) {
 		t.Error("Expected output to contain tool name")
 	}
 
-	// Verify code block with json language
-	if !strings.Contains(stripped, "```json") {
-		t.Error("Expected output to contain ```json code block")
-	}
-
 	// Verify input parameters are present
 	if !strings.Contains(stripped, "param1") {
 		t.Error("Expected output to contain param1")
@@ -128,13 +118,13 @@ func TestConsoleFormatter_ToolUse(t *testing.T) {
 	lines := strings.Split(stripped, "\n")
 	foundIndentedContent := false
 	for _, line := range lines {
-		if strings.HasPrefix(line, "    ") && strings.Contains(line, "```json") {
+		if strings.HasPrefix(line, "    ") && (strings.Contains(line, "param1") || strings.Contains(line, "param2")) {
 			foundIndentedContent = true
 			break
 		}
 	}
 	if !foundIndentedContent {
-		t.Error("Expected code block to be indented with 4 spaces")
+		t.Error("Expected JSON content to be indented with 4 spaces")
 	}
 }
 
