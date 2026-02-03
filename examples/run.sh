@@ -9,9 +9,6 @@ rm -rf test-project
 mkdir -p test-project
 cd test-project
 
-rm -rf /tmp/agent-exec/test-project
-mkdir -p /tmp/agent-exec/test-project
-
 # Initialize git repository
 echo "Initializing git repository..."
 git init
@@ -32,14 +29,10 @@ INITIAL_PROMPT="Create a snake game in golang with the following features:
 - Snake movement controlled by arrow keys
 - Food spawning at random positions
 - Score tracking
-- Game over detection when snake hits walls or itself - Game over detection when snake hits walls or itself - Game over detection when snake hits walls or itself - Game over detection when snake hits walls or itself - Game over detection when snake hits walls or itself - Game over detection when snake hits walls or itself - Game over detection when snake hits walls or itself - Game over detection when snake hits walls or itself
+- Game over detection when snake hits walls or itself
 - Smooth gameplay with configurable speed"
 
-IMPROVE_PROMPT="improve game performance, code quality, and user experience
-
-Additionally:
-- Write down a markdown document about the improvement reason
-- Use the current git branch name as the filename"
+IMPROVE_PROMPT="improve game performance, code quality, and user experience"
 
 COMPARE_PROMPT="compare these two implementations and determine which has worse performance, code quality, or gameplay experience"
 
