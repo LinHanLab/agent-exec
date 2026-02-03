@@ -2,7 +2,12 @@
 
 English | [中文](README.zh-CN.md)
 
-Automated iterative improvement for Claude Code. Prevents premature completion, trading time and tokens for the best results. Minimal controller for iterative refinement and [Ralph loops](https://beuke.org/ralph-wiggum-loop/).
+Automated iterative improvement for Claude Code, trading time and tokens for the best results.
+
+- Designed for long-running AI agent tasks
+- Runs Claude Code CLI in headless mode for automation
+- Human-readable terminal output
+- Cross-platform (macOS, Linux, Windows)
 
 ## Installation
 
