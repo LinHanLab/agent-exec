@@ -17,7 +17,28 @@ go install github.com/LinHanLab/agent-exec/cmd/agent-exec@latest
 Tournament-style code evolution using git branches. Creates competing implementations, uses AI comparison to select winners, and iteratively improves through elimination rounds:
 
 ```
-todo
+              Start
+                │
+                ▼
+         ┌─────────────┐
+         │  Branch A   │◄──────────────┐
+         │  (initial)  │               │
+         └──────┬──────┘               │
+                │                      │
+     ┌──────────▼──────────┐           │
+     │   Create Branch B   │           │
+     │   (improve A)       │           │
+     └──────────┬──────────┘           │
+                │                      │
+     ┌──────────▼──────────┐           │
+     │   AI: Compare A,B   │           │
+     │   Delete loser      │           │
+     └──────────┬──────────┘           │
+                │                      │
+         Winner ───────────────────────┘
+                │                (repeat N times)
+                ▼
+          Best Result
 ```
 
 ### Loop Command
@@ -25,7 +46,22 @@ todo
 Simple iterative execution of Claude Code prompts:
 
 ```
-todo
+         Start
+           │
+           ▼
+    ┌─────────────┐
+    │ Run Prompt  │◄─────┐
+    └──────┬──────┘      │
+           │             │
+    ┌──────▼──────┐      │
+    │   Sleep     │      │
+    └──────┬──────┘      │
+           │             │
+           └─────────────┘
+                  (repeat N times)
+           │
+           ▼
+        Complete
 ```
 
 
