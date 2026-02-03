@@ -32,7 +32,7 @@ INITIAL_PROMPT="Create a snake game in golang with the following features:
 - Snake movement controlled by arrow keys
 - Food spawning at random positions
 - Score tracking
-- Game over detection when snake hits walls or itself
+- Game over detection when snake hits walls or itself - Game over detection when snake hits walls or itself - Game over detection when snake hits walls or itself - Game over detection when snake hits walls or itself - Game over detection when snake hits walls or itself - Game over detection when snake hits walls or itself - Game over detection when snake hits walls or itself - Game over detection when snake hits walls or itself
 - Smooth gameplay with configurable speed"
 
 IMPROVE_PROMPT="improve game performance, code quality, and user experience
