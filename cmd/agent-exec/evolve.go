@@ -33,18 +33,17 @@ var (
 
 var evolveCmd = &cobra.Command{
 	Use:   "evolve <prompt>",
-	Short: "Tournament-style code evolution using competing git branches",
-	Long: `Tournament-style code evolution using competing git branches.
+	Short: "Tournament-style code evolution using git branches",
+	Long: `Tournament-style code evolution using git branches.
 
-Creates an initial implementation, then iteratively improves by:
-1. Creating a challenger branch with improvements
-2. Using AI comparison to select the better implementation
-3. Eliminating the worse branch and continuing with the winner
-
-The final winning branch contains the best evolved implementation.
+Creates an initial implementation, then iteratively improves through rounds:
+  1. Create a challenger branch from the current winner
+  2. Run improvement prompt on the challenger
+  3. AI compares both branches and eliminates the loser
+  4. Repeat with the winner
 
 Example:
-  agent-exec evolve "implement user authentication" -n 5 -s 1m`,
+  agent-exec evolve "implement a snake game" -n 3`,
 	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		plan := args[0]

@@ -15,7 +15,14 @@ Do NOT skip these checks. Fix all errors before considering the task complete.
 
 ## Project Overview
 
-agent-exec is a Go CLI tool for automated iterative improvement with Claude Code. It wraps the `claude` CLI to enable tournament-style code evolution and iterative refinement loops.
+agent-exec is a Go CLI tool for automated iterative improvement with Claude Code, trading time and tokens for the best results.
+
+- Designed for long-running AI agent tasks
+- Runs Claude Code CLI in headless mode for automation
+- Human-readable terminal output
+- Cross-platform (macOS, Linux, Windows)
+
+**Critical dependency**: Requires the `claude` CLI (Claude Code) installed and available in PATH.
 
 ## Build and Development Commands
 
@@ -49,8 +56,6 @@ go test -v ./pkg/display -run TestFormatClaudeMessage
 
 ### Core Flow
 The tool executes Claude Code prompts via subprocess (`claude` CLI) and parses streaming JSON output to display formatted results and coordinate multi-step workflows.
-
-**Critical dependency**: This tool requires the `claude` CLI (Claude Code) to be installed and available in PATH.
 
 ### Module Structure
 

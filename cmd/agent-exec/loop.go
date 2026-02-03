@@ -22,14 +22,14 @@ var (
 
 var loopCmd = &cobra.Command{
 	Use:   "loop <prompt>",
-	Short: "Execute Claude Code prompts in a loop with optional iterations and sleep intervals",
-	Long: `Execute Claude Code prompts in a loop with optional iterations and sleep intervals.
+	Short: "Run the same prompt multiple times",
+	Long: `Run the same prompt multiple times for iterative refinement.
 
-Runs the specified prompt N times, useful for iterative refinement and testing.
-The loop can be interrupted gracefully with Ctrl+C.
+Each iteration runs Claude Code with the given prompt. Use -n to set the
+number of iterations and -s to add sleep between runs.
 
 Example:
-  agent-exec loop "refactor the code for better readability" -n 5 -s 30s`,
+  agent-exec loop "improve code quality" -n 5 -s 30s`,
 	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		prompt := args[0]
