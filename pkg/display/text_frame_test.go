@@ -170,3 +170,45 @@ func TestFrameBuilder_FrameOptions(t *testing.T) {
 		t.Error("Expected useBoxDrawing to be true")
 	}
 }
+
+func TestFrameBuilder_BorderAlignment(t *testing.T) {
+	fb := NewFrameBuilder(
+		WithContentWidth(50),
+		WithIndent(""),
+		WithBoxDrawing(),
+	)
+
+	testCases := []string{
+		"Short",
+		"Medium length content here",
+		"This is a much longer line of text that should still align properly",
+		"- Delete comments (following rules above)",
+		"- Rename identifiers (variables, functions, classes, etc.)",
+	}
+
+	for _, content := range testCases {
+		result := fb.Build(content)
+		stripped := stripANSI(result)
+		lines := strings.Split(stripped, "\n")
+
+		var borderedLines []string
+		for _, line := range lines {
+			if strings.Contains(line, "│") || strings.Contains(line, "┌") || strings.Contains(line, "└") {
+				borderedLines = append(borderedLines, line)
+			}
+		}
+
+		if len(borderedLines) < 2 {
+			t.Fatalf("Expected at least 2 bordered lines, got %d", len(borderedLines))
+		}
+
+		expectedLen := len([]rune(borderedLines[0]))
+		for i, line := range borderedLines {
+			lineLen := len([]rune(line))
+			if lineLen != expectedLen {
+				t.Errorf("Line %d length mismatch: expected %d, got %d\nContent: %q\nLine: %q",
+					i, expectedLen, lineLen, content, line)
+			}
+		}
+	}
+}

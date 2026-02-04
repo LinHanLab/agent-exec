@@ -30,7 +30,8 @@ INITIAL_PROMPT="Create a snake game in golang with the following features:
 - Food spawning at random positions
 - Score tracking
 - Game over detection when snake hits walls or itself
-- Smooth gameplay with configurable speed"
+- Smooth gameplay with configurable speed
+- This game must be really really really really really really really really really really really really really really really really really really really really good"
 
 IMPROVE_PROMPT="improve game performance, code quality, and user experience"
 
