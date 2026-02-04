@@ -8,7 +8,6 @@ import (
 )
 
 // mustGetEventData safely extracts typed data from an event.
-// Panics with a clear message if type assertion fails.
 func mustGetEventData[T any](event events.Event, expectedType string) T {
 	data, ok := event.Data.(T)
 	if !ok {
@@ -19,7 +18,6 @@ func mustGetEventData[T any](event events.Event, expectedType string) T {
 }
 
 // formatPrettyJSON marshals data to indented JSON.
-// Returns an error only if marshaling fails (e.g., unsupported type).
 func formatPrettyJSON(data interface{}) (string, error) {
 	jsonBytes, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
@@ -28,26 +26,16 @@ func formatPrettyJSON(data interface{}) (string, error) {
 	return string(jsonBytes), nil
 }
 
-// =============================================================================
-// Prompt Execution Formatters
-// =============================================================================
-
-// formatRunPromptStarted formats prompt execution start events.
-// Returns nil error (error return satisfies EventFormatter type).
 func formatRunPromptStarted(event events.Event, ctx *FormatContext) (string, error) {
 	data := mustGetEventData[events.RunPromptStartedData](event, string(event.Type))
 	color := GetColorForEventType(event.Type)
 	title := "🚀 Run Prompt Started"
 
-	// Format title
 	formattedTitle := fmt.Sprintf("%s%s%s", color, title, Reset)
-
-	// Format prompt content with box border (only prompt gets border)
 	promptContent := ctx.TextFormatter.FormatContentWithFrame(data.Prompt, true)
 
 	output := formattedTitle + promptContent
 
-	// Add optional metadata (indented, no frame)
 	if data.BaseURL != "" {
 		output += ctx.TextFormatter.IndentContent(fmt.Sprintf("🌐 Base URL: %s%s%s", BoldUnderline, data.BaseURL, Reset)) + "\n"
 	}
@@ -61,12 +49,6 @@ func formatRunPromptStarted(event events.Event, ctx *FormatContext) (string, err
 	return output, nil
 }
 
-// =============================================================================
-// Claude Streaming Formatters
-// =============================================================================
-
-// formatClaudeAssistantMessage formats assistant message events.
-// Returns nil error (error return satisfies EventFormatter type).
 func formatClaudeAssistantMessage(event events.Event, ctx *FormatContext) (string, error) {
 	data := mustGetEventData[events.AssistantMessageData](event, string(event.Type))
 	color := GetColorForEventType(event.Type)
@@ -74,20 +56,16 @@ func formatClaudeAssistantMessage(event events.Event, ctx *FormatContext) (strin
 	title := fmt.Sprintf("💬 %sAssistant", timeStr)
 	coloredTitle := fmt.Sprintf("%s%s%s", color, title, Reset)
 
-	// Pass color to FormatContentWithFrameAndColor so it applies to all wrapped lines
 	content := ctx.TextFormatter.FormatContentWithFrameAndColor(data.Text, color)
 
 	return coloredTitle + content, nil
 }
 
-// formatClaudeToolUse formats tool use events.
-// Returns an error if JSON marshaling fails in formatPrettyJSON.
 func formatClaudeToolUse(event events.Event, ctx *FormatContext) (string, error) {
 	data := mustGetEventData[events.ToolUseData](event, string(event.Type))
 	color := GetColorForEventType(event.Type)
 	timeStr := fmt.Sprintf("[%s] ", ctx.TextFormatter.FormatTime())
 
-	// Apply input filtering
 	filteredInput := ctx.ContentFilter.ApplyToolInputFilters(data.Name, data.Input)
 
 	prettyJSON, err := formatPrettyJSON(filteredInput)
@@ -95,39 +73,30 @@ func formatClaudeToolUse(event events.Event, ctx *FormatContext) (string, error)
 		return "", fmt.Errorf("failed to format tool input: %w", err)
 	}
 
-	// Apply content limiting
 	limitedJSON := ctx.ContentFilter.LimitCodeBlock(prettyJSON)
 
-	// Format title
 	title := fmt.Sprintf("🔧 %sTool: %s", timeStr, data.Name)
 	coloredTitle := fmt.Sprintf("%s%s%s", color, title, Reset)
 
-	// Format JSON content with frame
 	jsonContent := ctx.TextFormatter.FormatContentWithFrame(limitedJSON)
 
 	return coloredTitle + jsonContent, nil
 }
 
-// formatClaudeToolResult formats tool result events.
-// Returns nil error (error return satisfies EventFormatter type).
 func formatClaudeToolResult(event events.Event, ctx *FormatContext) (string, error) {
 	data := mustGetEventData[events.ToolResultData](event, string(event.Type))
 	color := GetColorForEventType(event.Type)
 	timeStr := fmt.Sprintf("[%s] ", ctx.TextFormatter.FormatTime())
 	limitedContent := ctx.ContentFilter.LimitCodeBlock(data.Content)
 
-	// Format title
 	title := fmt.Sprintf("📋 %sTool Result", timeStr)
 	coloredTitle := fmt.Sprintf("%s%s%s", color, title, Reset)
 
-	// Format result content with frame
 	resultContent := ctx.TextFormatter.FormatContentWithFrame(limitedContent)
 
 	return coloredTitle + resultContent, nil
 }
 
-// formatClaudeExecutionResult formats execution result events.
-// Returns nil error (error return satisfies EventFormatter type).
 func formatClaudeExecutionResult(event events.Event, ctx *FormatContext) (string, error) {
 	data := mustGetEventData[events.ExecutionResultData](event, string(event.Type))
 	color := GetColorForEventType(event.Type)
@@ -135,29 +104,19 @@ func formatClaudeExecutionResult(event events.Event, ctx *FormatContext) (string
 	return fmt.Sprintf("%s%s%s", color, message, Reset), nil
 }
 
-// =============================================================================
-// Loop Execution Formatters
-// =============================================================================
-
-// formatLoopStarted formats loop execution start events.
-// Returns nil error (error return satisfies EventFormatter type).
 func formatLoopStarted(event events.Event, ctx *FormatContext) (string, error) {
 	data := mustGetEventData[events.LoopStartedData](event, string(event.Type))
 	color := GetColorForEventType(event.Type)
 	title := "🔄 Loop Started"
 
-	// Format title with reverse video
 	formattedTitle := ctx.TextFormatter.ApplyReverseVideo(title, color)
 
-	// Indent content (no frame for short metadata)
 	content := fmt.Sprintf("🔢 Iterations: %d", data.TotalIterations)
 	indentedContent := ctx.TextFormatter.IndentContent(content)
 
 	return formattedTitle + "\n" + indentedContent, nil
 }
 
-// formatIterationStarted formats iteration start events.
-// Returns nil error (error return satisfies EventFormatter type).
 func formatIterationStarted(event events.Event, ctx *FormatContext) (string, error) {
 	data := mustGetEventData[events.IterationStartedData](event, string(event.Type))
 	color := GetColorForEventType(event.Type)
@@ -166,8 +125,6 @@ func formatIterationStarted(event events.Event, ctx *FormatContext) (string, err
 	return ctx.TextFormatter.ApplyReverseVideo(message, color), nil
 }
 
-// formatIterationCompleted formats iteration completion events.
-// Returns nil error (error return satisfies EventFormatter type).
 func formatIterationCompleted(event events.Event, ctx *FormatContext) (string, error) {
 	data := mustGetEventData[events.IterationCompletedData](event, string(event.Type))
 	color := GetColorForEventType(event.Type)
@@ -176,8 +133,6 @@ func formatIterationCompleted(event events.Event, ctx *FormatContext) (string, e
 	return ctx.TextFormatter.ApplyReverseVideo(message, color), nil
 }
 
-// formatIterationFailed formats iteration failure events.
-// Returns nil error (error return satisfies EventFormatter type).
 func formatIterationFailed(event events.Event, ctx *FormatContext) (string, error) {
 	data := mustGetEventData[events.IterationFailedData](event, string(event.Type))
 	color := GetColorForEventType(event.Type)
@@ -190,8 +145,6 @@ func formatIterationFailed(event events.Event, ctx *FormatContext) (string, erro
 	return ctx.TextFormatter.ApplyReverseVideo(message, color), nil
 }
 
-// formatLoopCompleted formats loop completion events.
-// Returns nil error (error return satisfies EventFormatter type).
 func formatLoopCompleted(event events.Event, ctx *FormatContext) (string, error) {
 	data := mustGetEventData[events.LoopCompletedData](event, string(event.Type))
 	color := GetColorForEventType(event.Type)
@@ -200,8 +153,6 @@ func formatLoopCompleted(event events.Event, ctx *FormatContext) (string, error)
 	return ctx.TextFormatter.ApplyReverseVideo(message, color), nil
 }
 
-// formatLoopInterrupted formats loop interruption events.
-// Returns nil error (error return satisfies EventFormatter type).
 func formatLoopInterrupted(event events.Event, ctx *FormatContext) (string, error) {
 	data := mustGetEventData[events.LoopInterruptedData](event, string(event.Type))
 	color := GetColorForEventType(event.Type)
@@ -209,8 +160,6 @@ func formatLoopInterrupted(event events.Event, ctx *FormatContext) (string, erro
 	return ctx.TextFormatter.ApplyReverseVideo(message, color), nil
 }
 
-// formatSleepStarted formats sleep start events.
-// Returns nil error (error return satisfies EventFormatter type).
 func formatSleepStarted(event events.Event, ctx *FormatContext) (string, error) {
 	data := mustGetEventData[events.SleepStartedData](event, string(event.Type))
 	color := GetColorForEventType(event.Type)
@@ -219,40 +168,27 @@ func formatSleepStarted(event events.Event, ctx *FormatContext) (string, error) 
 	return fmt.Sprintf("%s%s%s", color, message, Reset), nil
 }
 
-// =============================================================================
-// Evolution Workflow Formatters
-// =============================================================================
-
-// formatEvolveStarted formats evolution start events.
-// Returns nil error (error return satisfies EventFormatter type).
 func formatEvolveStarted(event events.Event, ctx *FormatContext) (string, error) {
 	data := mustGetEventData[events.EvolveStartedData](event, string(event.Type))
 	color := GetColorForEventType(event.Type)
 	title := "🧬 Evolution Started"
 
-	// Format title with reverse video
 	formattedTitle := ctx.TextFormatter.ApplyReverseVideo(title, color)
 
-	// Indent content (no frame for short metadata)
 	content := fmt.Sprintf("🔢 Iterations: %d", data.TotalIterations)
 	indentedContent := ctx.TextFormatter.IndentContent(content)
 
 	return formattedTitle + "\n" + indentedContent, nil
 }
 
-// formatRoundStarted formats round start events.
-// Returns nil error (error return satisfies EventFormatter type).
 func formatRoundStarted(event events.Event, ctx *FormatContext) (string, error) {
 	data := mustGetEventData[events.RoundStartedData](event, string(event.Type))
 	color := GetColorForEventType(event.Type)
 	title := fmt.Sprintf("🎯 Round %d/%d", data.Round, data.Total)
 
-	// Format title with reverse video
 	return ctx.TextFormatter.ApplyReverseVideo(title, color), nil
 }
 
-// formatImprovementStarted formats improvement start events.
-// Returns nil error (error return satisfies EventFormatter type).
 func formatImprovementStarted(event events.Event, ctx *FormatContext) (string, error) {
 	data := mustGetEventData[events.ImprovementStartedData](event, string(event.Type))
 	color := GetColorForEventType(event.Type)
@@ -261,8 +197,6 @@ func formatImprovementStarted(event events.Event, ctx *FormatContext) (string, e
 	return fmt.Sprintf("%s%s%s", color, message, Reset), nil
 }
 
-// formatComparisonStarted formats comparison start events.
-// Returns nil error (error return satisfies EventFormatter type).
 func formatComparisonStarted(event events.Event, ctx *FormatContext) (string, error) {
 	data := mustGetEventData[events.ComparisonStartedData](event, string(event.Type))
 	color := GetColorForEventType(event.Type)
@@ -271,8 +205,6 @@ func formatComparisonStarted(event events.Event, ctx *FormatContext) (string, er
 	return fmt.Sprintf("%s%s%s", color, message, Reset), nil
 }
 
-// formatComparisonRetry formats comparison retry events.
-// Returns nil error (error return satisfies EventFormatter type).
 func formatComparisonRetry(event events.Event, ctx *FormatContext) (string, error) {
 	data := mustGetEventData[events.ComparisonRetryData](event, string(event.Type))
 	color := GetColorForEventType(event.Type)
@@ -281,8 +213,6 @@ func formatComparisonRetry(event events.Event, ctx *FormatContext) (string, erro
 	return fmt.Sprintf("%s%s%s", color, message, Reset), nil
 }
 
-// formatWinnerSelected formats winner selection events.
-// Returns nil error (error return satisfies EventFormatter type).
 func formatWinnerSelected(event events.Event, ctx *FormatContext) (string, error) {
 	data := mustGetEventData[events.WinnerSelectedData](event, string(event.Type))
 	color := GetColorForEventType(event.Type)
@@ -291,8 +221,6 @@ func formatWinnerSelected(event events.Event, ctx *FormatContext) (string, error
 	return fmt.Sprintf("%s%s%s", color, message, Reset), nil
 }
 
-// formatEvolveCompleted formats evolution completion events.
-// Returns nil error (error return satisfies EventFormatter type).
 func formatEvolveCompleted(event events.Event, ctx *FormatContext) (string, error) {
 	data := mustGetEventData[events.EvolveCompletedData](event, string(event.Type))
 	color := GetColorForEventType(event.Type)
@@ -301,8 +229,6 @@ func formatEvolveCompleted(event events.Event, ctx *FormatContext) (string, erro
 	return ctx.TextFormatter.ApplyReverseVideo(message, color), nil
 }
 
-// formatEvolveInterrupted formats evolution interruption events.
-// Returns nil error (error return satisfies EventFormatter type).
 func formatEvolveInterrupted(event events.Event, ctx *FormatContext) (string, error) {
 	data := mustGetEventData[events.EvolveInterruptedData](event, string(event.Type))
 	color := GetColorForEventType(event.Type)
@@ -310,12 +236,6 @@ func formatEvolveInterrupted(event events.Event, ctx *FormatContext) (string, er
 	return ctx.TextFormatter.ApplyReverseVideo(message, color), nil
 }
 
-// =============================================================================
-// Git Operation Formatters
-// =============================================================================
-
-// formatGitBranchCreated formats git branch creation events.
-// Returns nil error (error return satisfies EventFormatter type).
 func formatGitBranchCreated(event events.Event, ctx *FormatContext) (string, error) {
 	data := mustGetEventData[events.BranchCreatedData](event, string(event.Type))
 	color := GetColorForEventType(event.Type)
@@ -327,8 +247,6 @@ func formatGitBranchCreated(event events.Event, ctx *FormatContext) (string, err
 	return fmt.Sprintf("%s%s%s", color, message, Reset), nil
 }
 
-// formatGitBranchCheckedOut formats git branch checkout events.
-// Returns nil error (error return satisfies EventFormatter type).
 func formatGitBranchCheckedOut(event events.Event, ctx *FormatContext) (string, error) {
 	data := mustGetEventData[events.BranchCheckedOutData](event, string(event.Type))
 	color := GetColorForEventType(event.Type)
@@ -337,8 +255,6 @@ func formatGitBranchCheckedOut(event events.Event, ctx *FormatContext) (string, 
 	return fmt.Sprintf("%s%s%s", color, message, Reset), nil
 }
 
-// formatGitBranchDeleted formats git branch deletion events.
-// Returns nil error (error return satisfies EventFormatter type).
 func formatGitBranchDeleted(event events.Event, ctx *FormatContext) (string, error) {
 	data := mustGetEventData[events.BranchDeletedData](event, string(event.Type))
 	color := GetColorForEventType(event.Type)
@@ -347,8 +263,6 @@ func formatGitBranchDeleted(event events.Event, ctx *FormatContext) (string, err
 	return fmt.Sprintf("%s%s%s", color, message, Reset), nil
 }
 
-// formatGitCommitsSquashed formats git commit squash events.
-// Returns nil error (error return satisfies EventFormatter type).
 func formatGitCommitsSquashed(event events.Event, ctx *FormatContext) (string, error) {
 	data := mustGetEventData[events.CommitsSquashedData](event, string(event.Type))
 	color := GetColorForEventType(event.Type)

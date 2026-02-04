@@ -4,7 +4,7 @@ import (
 	"github.com/LinHanLab/agent-exec/pkg/events"
 )
 
-// EventFormatter is a function that formats a specific event type
+// EventFormatter formats a specific event type
 type EventFormatter func(event events.Event, ctx *FormatContext) (string, error)
 
 // FormatContext provides dependencies to event formatters
@@ -14,7 +14,6 @@ type FormatContext struct {
 	Verbose       bool
 }
 
-// eventFormatters maps event types to their formatter functions
 var eventFormatters = map[events.EventType]EventFormatter{
 	events.EventRunPromptStarted:       formatRunPromptStarted,
 	events.EventClaudeAssistantMessage: formatClaudeAssistantMessage,
@@ -80,7 +79,6 @@ func GetColorForEventType(eventType events.EventType) string {
 	case events.EventClaudeToolUse,
 		events.EventClaudeToolResult:
 		return ""
-
 	default:
 		return ""
 	}
