@@ -18,7 +18,7 @@ const (
 type JSONFormatter struct {
 	writer        io.Writer
 	verbose       bool
-	textFormatter *TextFormatter
+	textFormatter TextFormatter
 	contentFilter *ContentFilter
 }
 
@@ -31,6 +31,9 @@ func NewConsoleFormatter(writer io.Writer, verbose bool) *JSONFormatter {
 		contentFilter: NewContentFilter(verbose),
 	}
 }
+
+// Ensure JSONFormatter implements Formatter interface
+var _ Formatter = (*JSONFormatter)(nil)
 
 // Format processes an event and outputs it as human-readable colored text
 func (f *JSONFormatter) Format(event events.Event) error {

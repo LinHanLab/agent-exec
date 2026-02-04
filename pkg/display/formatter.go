@@ -1,6 +1,8 @@
 package display
 
 import (
+	"fmt"
+	"os"
 	"sync"
 
 	"github.com/LinHanLab/agent-exec/pkg/events"
@@ -37,9 +39,7 @@ func (d *Display) Start() {
 		ch := d.emitter.Subscribe()
 		for event := range ch {
 			if err := d.formatter.Format(event); err != nil {
-				// In practice, this should never happen with stdout/stderr
-				// but we check it anyway to satisfy linting
-				return
+				fmt.Fprintf(os.Stderr, "[display] format error: %v\n", err)
 			}
 		}
 		_ = d.formatter.Flush()

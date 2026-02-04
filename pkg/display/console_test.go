@@ -284,21 +284,3 @@ func TestDisplay_MultipleEvents(t *testing.T) {
 		t.Errorf("Expected at least 3 lines of output, got %d", len(lines))
 	}
 }
-
-// stripANSI removes ANSI color codes from a string
-func stripANSI(s string) string {
-	// Remove ANSI escape sequences
-	result := ""
-	inEscape := false
-	for _, r := range s {
-		switch {
-		case r == '\033':
-			inEscape = true
-		case inEscape && r == 'm':
-			inEscape = false
-		case !inEscape:
-			result += string(r)
-		}
-	}
-	return strings.TrimSpace(result)
-}
