@@ -38,7 +38,7 @@ func TestStatusLineFormatter_TTYDetection(t *testing.T) {
 	buf := &bytes.Buffer{}
 
 	// Create with enabled=true but non-TTY writer
-	f := NewStatusLineFormatter(wrapped, buf, true)
+	f := NewStatusLineFormatter(wrapped, buf, true, nil)
 
 	// Should be disabled because buf is not a TTY
 	if f.enabled {
@@ -57,13 +57,13 @@ func TestStatusLineFormatter_StatusBlockRendering(t *testing.T) {
 		isTTY:         true,
 		terminalWidth: 120,
 		statusLines:   4,
-		iteration:     3,
-		total:         10,
+		currentTotal:  3,
+		totalItems:    10,
+		mode:          "loop",
 		cwd:           "/path/to/cwd",
 		branch:        "feat/branch-name",
 		baseURL:       "https://api.example.com",
 		prompt:        "improve the authentication system to use JWT tokens",
-		isEvolve:      false,
 		startTime:     time.Now().Add(-5 * time.Minute),
 	}
 
@@ -118,9 +118,9 @@ func TestStatusLineFormatter_EvolveMode(t *testing.T) {
 		isTTY:         true,
 		terminalWidth: 80,
 		statusLines:   4,
-		iteration:     2,
-		total:         5,
-		isEvolve:      true,
+		currentTotal:  2,
+		totalItems:    5,
+		mode:          "evolve",
 		cwd:           "/test/path",
 		branch:        "test-branch",
 	}
@@ -219,14 +219,14 @@ func TestStatusLineFormatter_EventTracking(t *testing.T) {
 	}
 	f.updateState(event2)
 
-	if f.iteration != 5 {
-		t.Errorf("Expected iteration to be 5, got %d", f.iteration)
+	if f.currentTotal != 5 {
+		t.Errorf("Expected currentTotal to be 5, got %d", f.currentTotal)
 	}
-	if f.total != 10 {
-		t.Errorf("Expected total to be 10, got %d", f.total)
+	if f.totalItems != 10 {
+		t.Errorf("Expected totalItems to be 10, got %d", f.totalItems)
 	}
-	if f.isEvolve {
-		t.Error("Expected isEvolve to be false for iteration event")
+	if f.mode != "loop" {
+		t.Errorf("Expected mode to be 'loop', got %q", f.mode)
 	}
 
 	// Test RoundStarted event
@@ -239,14 +239,14 @@ func TestStatusLineFormatter_EventTracking(t *testing.T) {
 	}
 	f.updateState(event3)
 
-	if f.iteration != 3 {
-		t.Errorf("Expected iteration to be 3, got %d", f.iteration)
+	if f.currentTotal != 3 {
+		t.Errorf("Expected currentTotal to be 3, got %d", f.currentTotal)
 	}
-	if f.total != 7 {
-		t.Errorf("Expected total to be 7, got %d", f.total)
+	if f.totalItems != 7 {
+		t.Errorf("Expected totalItems to be 7, got %d", f.totalItems)
 	}
-	if !f.isEvolve {
-		t.Error("Expected isEvolve to be true for round event")
+	if f.mode != "evolve" {
+		t.Errorf("Expected mode to be 'evolve', got %q", f.mode)
 	}
 
 	// Test GitBranchCreated event
@@ -286,7 +286,7 @@ func TestStatusLineFormatter_ConcurrentAccess(t *testing.T) {
 		enabled:       false, // Disable to avoid TTY issues
 		isTTY:         false,
 		terminalWidth: 80,
-		statusLines:   3,
+		statusLines:   4,
 	}
 
 	// Run concurrent Format calls
@@ -351,8 +351,9 @@ func TestStatusLineFormatter_TerminalWidthTruncation(t *testing.T) {
 		isTTY:         true,
 		terminalWidth: 40, // Small terminal
 		statusLines:   4,
-		iteration:     1,
-		total:         10,
+		currentTotal:  1,
+		totalItems:    10,
+		mode:          "loop",
 		cwd:           "/very/long/path/to/working/directory",
 		branch:        "feat/very-long-branch-name",
 		prompt:        "short prompt",

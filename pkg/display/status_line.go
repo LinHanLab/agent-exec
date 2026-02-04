@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/LinHanLab/agent-exec/pkg/events"
+	"github.com/LinHanLab/agent-exec/pkg/git"
 	"golang.org/x/term"
 )
 
@@ -21,28 +22,30 @@ type StatusLineFormatter struct {
 	enabled       bool
 	isTTY         bool
 	terminalWidth int
+	gitClient     *git.Client
 
 	// Status block state
 	statusVisible bool
 	statusLines   int // Always 4
 
 	// Context for status line
-	iteration int
-	total     int
-	cwd       string
-	branch    string
-	baseURL   string
-	prompt    string
-	isEvolve  bool // Track if we're in evolve mode (use "Round" instead of "Iteration")
-	startTime time.Time
+	mode         string // "loop" or "evolve"
+	currentTotal int    // Current item number (iteration or round)
+	totalItems   int    // Total items from *Started event
+	cwd          string
+	branch       string
+	baseURL      string
+	prompt       string
+	startTime    time.Time
 }
 
 // NewStatusLineFormatter creates a new status line formatter
-func NewStatusLineFormatter(wrapped Formatter, writer io.Writer, enabled bool) *StatusLineFormatter {
+func NewStatusLineFormatter(wrapped Formatter, writer io.Writer, enabled bool, gitClient *git.Client) *StatusLineFormatter {
 	f := &StatusLineFormatter{
 		wrapped:     wrapped,
 		writer:      writer,
 		enabled:     enabled,
+		gitClient:   gitClient,
 		statusLines: 4,
 		startTime:   time.Now(),
 	}
@@ -73,6 +76,13 @@ func NewStatusLineFormatter(wrapped Formatter, writer io.Writer, enabled bool) *
 	// Get current working directory
 	if cwd, err := os.Getwd(); err == nil {
 		f.cwd = cwd
+	}
+
+	// Get current branch from git client
+	if gitClient != nil {
+		if branch, err := gitClient.GetCurrentBranch(); err == nil {
+			f.branch = branch
+		}
 	}
 
 	// Get base URL from environment
@@ -114,18 +124,32 @@ func (f *StatusLineFormatter) updateState(event events.Event) {
 			f.prompt = data.Prompt
 		}
 
+	case events.EventLoopStarted:
+		if data, ok := event.Data.(events.LoopStartedData); ok {
+			f.mode = "loop"
+			f.totalItems = data.TotalIterations
+			f.currentTotal = 0
+		}
+
+	case events.EventEvolveStarted:
+		if data, ok := event.Data.(events.EvolveStartedData); ok {
+			f.mode = "evolve"
+			f.totalItems = data.TotalIterations
+			f.currentTotal = 0
+		}
+
 	case events.EventIterationStarted:
 		if data, ok := event.Data.(events.IterationStartedData); ok {
-			f.iteration = data.Current
-			f.total = data.Total
-			f.isEvolve = false
+			f.mode = "loop"
+			f.currentTotal = data.Current
+			f.totalItems = data.Total
 		}
 
 	case events.EventRoundStarted:
 		if data, ok := event.Data.(events.RoundStartedData); ok {
-			f.iteration = data.Round
-			f.total = data.Total
-			f.isEvolve = true
+			f.mode = "evolve"
+			f.currentTotal = data.Round
+			f.totalItems = data.Total
 		}
 
 	case events.EventGitBranchCreated:
@@ -149,11 +173,11 @@ func (f *StatusLineFormatter) buildStatusBlock() []string {
 	var parts []string
 
 	// Add iteration/round progress at the start
-	if f.iteration > 0 && f.total > 0 {
-		if f.isEvolve {
-			parts = append(parts, fmt.Sprintf("Round %d/%d", f.iteration, f.total))
+	if f.totalItems > 0 && f.mode != "" {
+		if f.mode == "evolve" {
+			parts = append(parts, fmt.Sprintf("Round %d/%d", f.currentTotal, f.totalItems))
 		} else {
-			parts = append(parts, fmt.Sprintf("Iter %d/%d", f.iteration, f.total))
+			parts = append(parts, fmt.Sprintf("Iter %d/%d", f.currentTotal, f.totalItems))
 		}
 	}
 
@@ -243,6 +267,11 @@ func (f *StatusLineFormatter) updateStatusBlock() {
 // clearStatusBlock clears the 4-line status block
 func (f *StatusLineFormatter) clearStatusBlock() {
 	if !f.statusVisible {
+		return
+	}
+
+	if !f.enabled || !f.isTTY {
+		f.statusVisible = false
 		return
 	}
 

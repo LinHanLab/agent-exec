@@ -9,6 +9,7 @@ import (
 	"github.com/LinHanLab/agent-exec/pkg/commands/loop"
 	"github.com/LinHanLab/agent-exec/pkg/display"
 	"github.com/LinHanLab/agent-exec/pkg/events"
+	"github.com/LinHanLab/agent-exec/pkg/git"
 	"github.com/spf13/cobra"
 )
 
@@ -43,10 +44,11 @@ Example:
 		// Create emitter and display
 		emitter := events.NewChannelEmitter(100)
 		baseFormatter := display.NewConsoleFormatter(os.Stdout, verbose)
+		gitClient := git.NewClient(emitter)
 
 		var formatter display.Formatter
 		if statusLine {
-			formatter = display.NewStatusLineFormatter(baseFormatter, os.Stdout, true)
+			formatter = display.NewStatusLineFormatter(baseFormatter, os.Stdout, true, gitClient)
 		} else {
 			formatter = baseFormatter
 		}
