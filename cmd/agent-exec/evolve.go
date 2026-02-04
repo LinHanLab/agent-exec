@@ -29,6 +29,7 @@ var (
 
 	evolveVerbose     bool
 	debugKeepBranches bool
+	evolveStatusLine  bool
 )
 
 var evolveCmd = &cobra.Command{
@@ -69,7 +70,15 @@ Example:
 
 		// Create emitter and display
 		emitter := events.NewChannelEmitter(100)
-		formatter := display.NewConsoleFormatter(os.Stdout, evolveVerbose)
+		baseFormatter := display.NewConsoleFormatter(os.Stdout, evolveVerbose)
+
+		var formatter display.Formatter
+		if evolveStatusLine {
+			formatter = display.NewStatusLineFormatter(baseFormatter, os.Stdout, true)
+		} else {
+			formatter = baseFormatter
+		}
+
 		disp := display.NewDisplay(formatter, emitter)
 		disp.Start()
 
@@ -109,4 +118,5 @@ func init() {
 
 	evolveCmd.Flags().BoolVarP(&evolveVerbose, "verbose", "v", false, "Show verbose output including all Claude events")
 	evolveCmd.Flags().BoolVar(&debugKeepBranches, "debug-keep-branches", false, "Keep all branches for debugging instead of deleting losers")
+	evolveCmd.Flags().BoolVar(&evolveStatusLine, "status-line", true, "Show updating status line")
 }

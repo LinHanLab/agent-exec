@@ -18,6 +18,7 @@ var (
 	systemPrompt       string
 	appendSystemPrompt string
 	verbose            bool
+	statusLine         bool
 )
 
 var loopCmd = &cobra.Command{
@@ -41,7 +42,15 @@ Example:
 
 		// Create emitter and display
 		emitter := events.NewChannelEmitter(100)
-		formatter := display.NewConsoleFormatter(os.Stdout, verbose)
+		baseFormatter := display.NewConsoleFormatter(os.Stdout, verbose)
+
+		var formatter display.Formatter
+		if statusLine {
+			formatter = display.NewStatusLineFormatter(baseFormatter, os.Stdout, true)
+		} else {
+			formatter = baseFormatter
+		}
+
 		disp := display.NewDisplay(formatter, emitter)
 		disp.Start()
 
@@ -74,4 +83,5 @@ func init() {
 	loopCmd.Flags().StringVar(&systemPrompt, "system-prompt", "", "Replace entire system prompt sent to Claude")
 	loopCmd.Flags().StringVar(&appendSystemPrompt, "append-system-prompt", "", "Append additional instructions to default system prompt")
 	loopCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Show verbose output including all Claude events")
+	loopCmd.Flags().BoolVar(&statusLine, "status-line", true, "Show updating status line")
 }

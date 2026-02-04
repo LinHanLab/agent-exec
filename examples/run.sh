@@ -39,7 +39,7 @@ COMPARE_PROMPT="compare these two implementations and determine which has worse 
 
 COMPARE_SYSTEM_PROMPT="You are a code comparison agent. Your task is to compare two implementations and determine which one is worse. You MUST output ONLY the branch name of the worse implementation, nothing else. No explanations, no reasoning, no additional text - just the branch name."
 
-ITERATIONS=2
+ITERATIONS=1
 
 # Run agent-exec evolve command
 agent-exec evolve "$INITIAL_PROMPT" \
