@@ -121,7 +121,7 @@ func (f *StatusLineFormatter) updateState(event events.Event) {
 	case events.EventRunPromptStarted:
 		if data, ok := event.Data.(events.RunPromptStartedData); ok {
 			f.cwd = data.Cwd
-			f.prompt = data.Prompt
+			f.prompt = strings.TrimSpace(data.Prompt)
 		}
 
 	case events.EventLoopStarted:
