@@ -1,0 +1,13 @@
+.DS_Store
+.idea/
+*.iml
+.vscode/
+
+__*
+
+.env*
+
+app
+
+# Example test artifacts
+examples/test-project/

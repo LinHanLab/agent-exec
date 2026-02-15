@@ -1,0 +1,53 @@
+run:
+  timeout: 30m
+
+version: "2"
+
+formatters:
+  exclusions:
+    paths:
+      - third_party
+      - vendor
+
+output:
+  formats:
+    text:
+      path: stderr
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+linters:
+  exclusions:
+    paths:
+      - third_party
+      - vendor
+
+  default: standard
+  enable:
+    - gocritic
+    - govet
+    - errorlint
+    - ineffassign
+    - revive
+    - staticcheck
+    - testifylint
+    - unused
+    - usestdlibvars
+
+  settings:
+    revive:
+      rules:
+        - name: exported
+          disabled: true
+    staticcheck:
+      checks:
+        - "all"
+        - "-QF1008"  # Omit embedded fields from selector expression
+        - "-ST1000"  # Package comments
+        - "-ST1020"  # Exported function comments
+        - "-ST1021"  # Exported type comments
+        - "-ST1022"  # Exported var/const comments
+    testifylint:
+      enable-all: true
